@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iTransformer 정리 - 통신 KPI 예측과 이상 탐지 관점</title>
+  <meta name="description" content="iTransformer를 통신 KPI 예측과 이상 탐지 관점에서 정리한 글입니다." />
+  <meta property="og:title" content="iTransformer 정리 - 통신 KPI 예측과 이상 탐지 관점" />
+  <meta property="og:description" content="Transformer 기반 다변량 시계열 예측의 중요한 backbone인 iTransformer를 통신 KPI 예측 관점에서 정리했습니다." />
+  <meta property="og:type" content="article" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #5f6b7a;
+      --accent: #2563eb;
+      --border: #e5eaf2;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --card: #111827;
+        --text: #e5e7eb;
+        --muted: #a7b0c0;
+        --accent: #60a5fa;
+        --border: #263244;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 32rem), var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+    }
+    main {
+      width: min(860px, calc(100% - 32px));
+      margin: 48px auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: clamp(24px, 5vw, 56px);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.10);
+    }
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      line-height: 1.15;
+      margin: 0 0 20px;
+      letter-spacing: -0.04em;
+    }
+    .subtitle {
+      font-size: 1.15rem;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+    p { margin: 0 0 22px; }
+    strong { color: var(--accent); }
+    ul {
+      margin: 10px 0 28px;
+      padding-left: 1.2rem;
+    }
+    li { margin: 8px 0; }
+    .note {
+      border-left: 4px solid var(--accent);
+      padding: 16px 18px;
+      background: color-mix(in srgb, var(--accent) 9%, transparent);
+      border-radius: 12px;
+      margin: 30px 0;
+    }
+    .hashtags {
+      color: var(--accent);
+      font-weight: 650;
+      word-break: keep-all;
+      margin-top: 34px;
+    }
+    footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Time Series Forecasting · iTransformer</div>
+    <h1>iTransformer 정리</h1>
+    <div class="subtitle">통신 KPI 예측과 이상 탐지 관점에서 본 Transformer 기반 다변량 시계열 예측 구조</div>
+
+    <p>최근 시계열 예측 분야에서 자주 언급되는 <strong>iTransformer</strong>를 정리해봤습니다.</p>
+
+    <p>저는 통신 KPI를 예측하고, 예측값과 실제값의 차이를 통해 이상 유무를 확인하는 관점에서 이 논문을 읽었습니다.</p>
+
+    <p>iTransformer는 단순히 새로운 예측 모델이라기보다, <strong>Transformer를 다변량 시계열에 어떻게 적용할 것인가</strong>에 대한 관점을 바꾼 중요한 구조입니다.</p>
+
+    <p>기존 Transformer 기반 시계열 모델들은 보통 각 시점을 token으로 보고 attention을 적용했습니다.</p>
+
+    <p>즉, 같은 timestamp에 있는 여러 변수들을 하나의 token 안에 묶어 처리하는 방식이 많았습니다.</p>
+
+    <p>하지만 다변량 시계열에서는 각 변수가 서로 다른 의미를 가집니다.</p>
+
+    <p>예를 들어 통신 KPI에서도 트래픽, 지연시간, 에러율, 세션 수, 처리량 같은 변수들은 같은 시간에 관측되더라도 서로 다른 패턴과 지연 관계를 가질 수 있습니다.</p>
+
+    <div class="note">
+      iTransformer는 이 구조를 뒤집습니다. 시간 포인트를 token으로 보는 대신, <strong>각 변수의 전체 시간 흐름을 하나의 token으로 보고 attention을 변수 간 관계 학습에 사용</strong>합니다.
+    </div>
+
+    <p>핵심은 다음과 같습니다.</p>
+
+    <ul>
+      <li>시간축 token 대신 <strong>변수 token</strong> 사용</li>
+      <li>attention으로 <strong>변수 간 상관관계</strong> 학습</li>
+      <li>feed-forward network로 각 변수의 <strong>시간 패턴</strong> 학습</li>
+      <li>긴 lookback window를 더 효과적으로 활용</li>
+      <li>Transformer의 기본 구조는 유지하되, 입력 해석 방식을 전환</li>
+    </ul>
+
+    <p>이 접근은 복잡한 모듈을 추가하는 대신, <strong>“무엇을 token으로 볼 것인가”</strong> 라는 기본 가정을 다시 본다는 점에서 의미가 큽니다.</p>
+
+    <p>iTransformer는 ICLR 2024 Spotlight로 선정되었고, 이후 NeuralForecast, GluonTS 같은 시계열 라이브러리에도 포함되었습니다.</p>
+
+    <p>또한 2025~2026년 후속 연구들에서도 baseline이나 개선 대상으로 계속 등장하고 있습니다.</p>
+
+    <p>그래서 iTransformer는 “시계열 예측의 유일한 표준”이라기보다는, <strong>Transformer 기반 다변량 시계열 예측에서 중요한 backbone이자 기준점이 된 모델</strong>로 보는 것이 적절합니다.</p>
+
+    <p>개인적으로 인상 깊었던 점은 모델을 더 복잡하게 만드는 것이 아니라, 입력 표현의 관점을 바꾸는 것만으로 성능과 해석 가능성을 개선했다는 점입니다.</p>
+
+    <p>통신 KPI 예측처럼 여러 지표가 서로 영향을 주고받는 환경에서는, 변수 간 관계를 어떻게 모델링할 것인지가 중요합니다.</p>
+
+    <p>그런 관점에서 iTransformer는 KPI 예측 기반 이상 탐지 문제를 고민할 때 참고할 만한 구조라고 생각합니다.</p>
+
+    <p class="hashtags">#TimeSeries #Transformer #DeepLearning #MachineLearning #Forecasting #iTransformer #AnomalyDetection #TelecomAI #AI</p>
+
+    <footer>
+      정리 주제: iTransformer: Inverted Transformers Are Effective for Time Series Forecasting
+    </footer>
+  </main>
+</body>
+</html>
