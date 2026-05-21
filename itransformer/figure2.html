@@ -1,0 +1,2035 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iTransformer Figure 2 — 토큰 관점 데모</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --ink: #17202a;
+      --muted: #5e6a78;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --blue: #2f6fed;
+      --teal: #009688;
+      --amber: #f59e0b;
+      --rose: #e25563;
+      --violet: #6d5dfc;
+      --green: #16a34a;
+      --shadow: 0 14px 34px rgba(24, 39, 75, .08);
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    main {
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 28px 48px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 24px;
+      padding: 6px 0 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3.4vw, 48px);
+      line-height: 1.06;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 920px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      min-width: 310px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #263241;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--c);
+    }
+
+    section {
+      margin-top: 18px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.2;
+    }
+
+    .caption {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .mode-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .mode-copy strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .mode-copy span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .mode-copy,
+    .insight,
+    .takeaway,
+    .section-title > * {
+      min-width: 0;
+    }
+
+    .mode-controls {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f6f8fb;
+      min-width: 0;
+    }
+
+    .mode-button {
+      min-height: 38px;
+      border: 0;
+      border-radius: 7px;
+      padding: 0 12px;
+      background: transparent;
+      color: #344053;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .mode-button[aria-pressed="true"] {
+      background: #fff;
+      color: var(--active-tone);
+      box-shadow: 0 2px 8px rgba(24, 39, 75, .12);
+    }
+
+    .insight-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin: 0 0 14px;
+    }
+
+    .insight {
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--tone) 24%, var(--line));
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--tone) 7%, #fff);
+    }
+
+    .insight strong {
+      display: block;
+      margin-bottom: 5px;
+      color: color-mix(in srgb, var(--tone) 76%, #17202a);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .insight span {
+      color: #465364;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .comparison.has-focus .panel {
+      opacity: .56;
+      transform: translateY(0);
+      transition: opacity .18s ease, transform .18s ease, border-color .18s ease;
+    }
+
+    .comparison.has-focus .panel.is-active {
+      opacity: 1;
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--active-tone) 46%, var(--line));
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .panel h3 {
+      margin: 0 0 4px;
+      font-size: 18px;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 7px 9px;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: 12px;
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .badge.inv { background: var(--teal); }
+
+    .content {
+      padding: 18px;
+    }
+
+    .matrix-area {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      min-height: 278px;
+    }
+
+    .axis-labels {
+      display: grid;
+      grid-template-rows: 28px 220px minmax(42px, auto);
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .axis-label-stack {
+      grid-row: 2;
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .var-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .grid-wrap {
+      display: grid;
+      grid-template-rows: 28px 220px minmax(42px, auto);
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .time-head {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .time-head span {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .series-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 8px;
+      height: 220px;
+      grid-row: 2;
+      grid-column: 1;
+    }
+
+    .cell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid color-mix(in srgb, var(--c) 36%, #d9e0ea);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--c) 12%, #fff);
+      color: color-mix(in srgb, var(--c) 70%, #17202a);
+      font-size: 12px;
+      font-weight: 800;
+      min-width: 0;
+      min-height: 0;
+      z-index: 1;
+    }
+
+    .token-overlay {
+      display: grid;
+      gap: 8px;
+      grid-row: 2;
+      grid-column: 1;
+      height: 220px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .token-overlay.cols {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .token-overlay.rows {
+      grid-template-rows: repeat(3, 1fr);
+    }
+
+    .token-frame {
+      position: relative;
+      border: 2px solid var(--stroke);
+      border-radius: 10px;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--stroke) 14%, transparent);
+      transition: box-shadow .18s ease, background .18s ease;
+    }
+
+    .panel.is-active .token-frame {
+      background: color-mix(in srgb, var(--stroke) 8%, transparent);
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--stroke) 18%, transparent);
+    }
+
+    .token-caption {
+      grid-row: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .temporal-caption {
+      padding-top: 24px;
+    }
+
+    .row-token-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .math {
+      font-family: "Cambria Math", "STIX Two Math", "Times New Roman", serif;
+      font-style: italic;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .math sup,
+    .math sub {
+      font-size: .72em;
+      line-height: 0;
+    }
+
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .note {
+      border-left: 4px solid var(--stroke);
+      background: #fbfcff;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #344053;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 320px 1fr 260px;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .raw-series {
+      display: grid;
+      gap: 14px;
+      align-content: center;
+    }
+
+    .spark {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .spark-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    svg {
+      width: 100%;
+      display: block;
+    }
+
+    .block-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-content: center;
+    }
+
+    .block {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .block h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .block p {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .token-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .token-card {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--c) 40%, var(--line));
+      background: color-mix(in srgb, var(--c) 10%, #fff);
+      font-size: 12px;
+      font-weight: 800;
+      color: color-mix(in srgb, var(--c) 75%, #17202a);
+      padding: 8px;
+    }
+
+    .attention-map {
+      display: grid;
+      grid-template-columns: 58px repeat(3, 1fr);
+      grid-template-rows: 28px repeat(3, 1fr);
+      gap: 6px;
+      height: 228px;
+      align-self: center;
+    }
+
+    .attn-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .attn-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: 800;
+      background: color-mix(in srgb, var(--teal) calc(var(--v) * 1%), #fff);
+      border: 1px solid color-mix(in srgb, var(--teal) 18%, var(--line));
+    }
+
+    .forecast {
+      display: grid;
+      gap: 14px;
+      align-content: center;
+    }
+
+    .projection {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .projection strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+
+    .projection span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .encoder-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .encoder-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .encoder-card-head {
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .encoder-card-head h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+    }
+
+    .shape-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 6px 9px;
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--tone) 10%, #fff);
+      border: 1px solid color-mix(in srgb, var(--tone) 36%, var(--line));
+      color: color-mix(in srgb, var(--tone) 75%, #17202a);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .encoder-body {
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .axis-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .axis-token {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--tone) 34%, var(--line));
+      background: color-mix(in srgb, var(--tone) 9%, #fff);
+      color: color-mix(in srgb, var(--tone) 78%, #17202a);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.25;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .stage-board {
+      display: grid;
+      gap: 10px;
+      margin: 14px 0;
+      grid-template-rows: repeat(4, minmax(116px, auto));
+    }
+
+    .stage-card {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      padding: 11px;
+      border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--line));
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--tone) 5%, #fff);
+      min-width: 0;
+    }
+
+    .stage-card.step-compare {
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .stage-index {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--tone) 14%, #fff);
+      color: color-mix(in srgb, var(--tone) 80%, #17202a);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .stage-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: color-mix(in srgb, var(--tone) 80%, #17202a);
+      font-size: 13px;
+    }
+
+    .stage-card span {
+      display: block;
+      color: #344053;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .step-visual {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .token-strip {
+      display: grid;
+      gap: 5px;
+    }
+
+    .token-strip.time {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .token-strip.variate {
+      grid-template-columns: 1fr;
+    }
+
+    .token-chip {
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 6px;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--c, var(--tone)) 32%, var(--line));
+      background: color-mix(in srgb, var(--c, var(--tone)) 10%, #fff);
+      color: color-mix(in srgb, var(--c, var(--tone)) 78%, #17202a);
+      font-size: 11px;
+      font-weight: 850;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .shape-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shape-box {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--line));
+      background: #fff;
+      color: color-mix(in srgb, var(--tone) 82%, #17202a);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .shape-arrow {
+      color: color-mix(in srgb, var(--tone) 80%, #17202a);
+      font-weight: 900;
+    }
+
+    .attention-mini {
+      display: grid;
+      gap: 3px;
+      width: min(150px, 100%);
+      padding: 7px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--line));
+      background: #fff;
+    }
+
+    .attention-mini.time {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .attention-mini.variate {
+      grid-template-columns: repeat(3, 1fr);
+      width: 96px;
+    }
+
+    .att-dot {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--tone) 18%, #fff);
+      border: 1px solid color-mix(in srgb, var(--tone) 30%, var(--line));
+    }
+
+    .metric-pair {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .stage-card > div,
+    .complexity-card,
+    .complexity-line > * {
+      min-width: 0;
+    }
+
+    .stage-matrix {
+      display: grid;
+      gap: 4px;
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 7px;
+      background: #f6f8fb;
+      border: 1px solid #edf0f6;
+    }
+
+    .stage-matrix.time {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .stage-matrix.variate {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .matrix-chip {
+      min-height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--tone) 12%, #fff);
+      border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--line));
+      color: color-mix(in srgb, var(--tone) 78%, #17202a);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .encoder-flow {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .flow-node {
+      min-height: 0;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--line));
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--tone) 6%, #fff);
+      color: #263241;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .flow-node strong {
+      display: block;
+      color: color-mix(in srgb, var(--tone) 78%, #17202a);
+      font-size: 13px;
+    }
+
+    .mini-stack {
+      display: grid;
+      gap: 5px;
+    }
+
+    .mini-token {
+      display: block;
+      padding: 6px 7px;
+      border-radius: 7px;
+      border: 1px solid color-mix(in srgb, var(--c, var(--tone)) 30%, var(--line));
+      background: color-mix(in srgb, var(--c, var(--tone)) 9%, #fff);
+      color: color-mix(in srgb, var(--c, var(--tone)) 76%, #17202a);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .flow-arrow {
+      justify-self: center;
+      width: 2px;
+      height: 24px;
+      background: var(--line);
+      position: relative;
+    }
+
+    .flow-arrow::after {
+      content: "";
+      position: absolute;
+      left: -5px;
+      bottom: -2px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 10px solid var(--line);
+    }
+
+    .calc-stack {
+      display: grid;
+      gap: 9px;
+    }
+
+    .calc-step {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 10px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .step-no {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--tone) 12%, #fff);
+      color: color-mix(in srgb, var(--tone) 78%, #17202a);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .calc-step strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .data-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .data-chip {
+      display: block;
+      padding: 7px 8px;
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--tone) 7%, #fff);
+      border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--line));
+      color: #263241;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .formula {
+      display: block;
+      margin-top: 5px;
+      padding: 8px;
+      border-radius: 7px;
+      background: #f6f8fb;
+      color: #263241;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .same-block {
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--teal) 7%, #fff);
+      color: #263241;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .complexity-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .complexity-card {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--line));
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--tone) 5%, #fff);
+    }
+
+    .complexity-card h4 {
+      margin: 0;
+      color: color-mix(in srgb, var(--tone) 82%, #17202a);
+      font-size: 15px;
+    }
+
+    .complexity-line {
+      display: grid;
+      grid-template-columns: minmax(112px, .7fr) minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      padding-top: 8px;
+      border-top: 1px solid color-mix(in srgb, var(--tone) 18%, var(--line));
+      color: #344053;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .complexity-line:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .complexity-line strong {
+      color: #17202a;
+    }
+
+    .score-bar {
+      height: 12px;
+      border-radius: 999px;
+      background: #edf0f6;
+      overflow: hidden;
+    }
+
+    .score-bar span {
+      display: block;
+      width: var(--w);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--tone);
+    }
+
+    .score-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .takeaway-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .takeaway {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #344053;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .takeaway strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #17202a;
+      font-size: 13px;
+    }
+
+    .footer {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .footer a {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .forward-pass-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #009688, #00796b);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(0, 150, 136, .3);
+      transition: box-shadow .2s, transform .15s;
+      margin-bottom: 20px;
+    }
+
+    .forward-pass-link:hover {
+      box-shadow: 0 6px 22px rgba(0, 150, 136, .5);
+      transform: translateY(-1px);
+    }
+
+    .forward-pass-link span {
+      font-size: 12px;
+      opacity: .85;
+    }
+
+    /* ═══ Matrix comparison styles ═══ */
+    .mx-outer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .mx-panel { min-width: 0; }
+
+    .mx-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Matrix grid itself */
+    .mx-mat-wrap {
+      display: grid;
+      grid-template-columns: 52px repeat(6, 1fr);
+      grid-template-rows: 26px repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .mx-corner { grid-column: 1; grid-row: 1; }
+
+    .mx-col-heads {
+      grid-column: 2 / -1;
+      grid-row: 1;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+    }
+
+    .mx-ch {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .mx-row-heads {
+      grid-column: 1;
+      grid-row: 2 / -1;
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .mx-rh {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      font-size: 11px;
+      font-weight: 700;
+      padding-right: 6px;
+    }
+
+    .mx-grid {
+      grid-column: 2 / -1;
+      grid-row: 2 / -1;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4px;
+    }
+
+    .mx-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      border-radius: 6px;
+      border: 1.5px solid color-mix(in srgb, var(--rc) 30%, var(--line));
+      background: color-mix(in srgb, var(--rc) 10%, #fff);
+      color: color-mix(in srgb, var(--rc) 75%, #17202a);
+      font-size: 13px;
+      font-weight: 800;
+      transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+    }
+
+    .mx-cell.col-hl {
+      border-color: var(--violet);
+      background: color-mix(in srgb, var(--violet) 18%, #fff);
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(109, 93, 252, .25);
+    }
+
+    .mx-cell.row-hl {
+      border-color: var(--rc);
+      background: color-mix(in srgb, var(--rc) 22%, #fff);
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--rc) 40%, transparent);
+    }
+
+    /* Arrows */
+    .mx-arrow-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mx-cut-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .mx-arrows {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+      width: 100%;
+    }
+
+    .mx-down-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--violet);
+      opacity: .7;
+    }
+
+    /* variate layout: arrows go sideways */
+    .mx-arrow-box.mx-arrow-row {
+      align-items: flex-start;
+    }
+
+    .mx-arrows.mx-arrows-row {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(3, 1fr);
+      width: auto;
+    }
+
+    .mx-right-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--teal);
+      opacity: .7;
+      height: 36px;
+    }
+
+    /* layout for row-based (variate) */
+    .mx-layout-row {
+      display: grid;
+      grid-template-columns: minmax(330px, 1fr) 86px minmax(220px, .72fr);
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .mx-layout-row .mx-mat-wrap {
+      grid-template-rows: 26px repeat(3, minmax(66px, 1fr));
+    }
+
+    .mx-layout-row .mx-row-heads,
+    .mx-layout-row .mx-grid,
+    .mx-arrows.mx-arrows-row,
+    .mx-tokens.mx-tokens-row {
+      grid-template-rows: repeat(3, minmax(66px, 1fr));
+    }
+
+    .mx-layout-row .mx-arrow-box {
+      align-self: stretch;
+      padding-top: 26px;
+    }
+
+    .mx-layout-row .mx-cut-label {
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .mx-layout-row .mx-right-arrow {
+      height: auto;
+    }
+
+    /* Token list */
+    .mx-tokens {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .mx-tokens.mx-tokens-row {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(3, auto);
+    }
+
+    .mx-tok {
+      border-radius: 8px;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      padding: 8px 6px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: default;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .mx-tok:hover { box-shadow: var(--shadow); }
+
+    .mx-tok-time:hover { border-color: var(--violet); }
+    .mx-tok-var:hover  { border-color: var(--teal); }
+
+    .mx-tok-name {
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .mx-tok-vals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      justify-content: center;
+    }
+
+    .mx-tv {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 24px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--tc) 12%, #fff);
+      border: 1px solid color-mix(in srgb, var(--tc) 28%, var(--line));
+      color: color-mix(in srgb, var(--tc) 78%, #17202a);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .mx-tok-sub {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    /* summary bar */
+    .mx-summary {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .mx-sum-item {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .mx-sum-bad  { background: color-mix(in srgb, var(--violet) 12%, #fff); color: color-mix(in srgb, var(--violet) 80%, #17202a); }
+    .mx-sum-warn { background: color-mix(in srgb, var(--amber) 12%, #fff);  color: color-mix(in srgb, var(--amber) 80%, #17202a); }
+    .mx-sum-good { background: color-mix(in srgb, var(--green) 12%, #fff);  color: color-mix(in srgb, var(--green) 80%, #17202a); }
+
+    .mx-calc-note {
+      margin-top: 9px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--tone) 24%, var(--line));
+      background: color-mix(in srgb, var(--tone) 5%, #fff);
+      color: #344053;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .mx-calc-note strong {
+      color: color-mix(in srgb, var(--tone) 82%, #17202a);
+    }
+
+    .encoder-sketch {
+      display: grid;
+      gap: 10px;
+    }
+
+    .encoder-chain {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .chain-step {
+      min-height: 74px;
+      display: grid;
+      align-content: center;
+      gap: 5px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--line));
+      background: color-mix(in srgb, var(--tone) 5%, #fff);
+      text-align: center;
+      min-width: 0;
+    }
+
+    .chain-step strong {
+      color: color-mix(in srgb, var(--tone) 82%, #17202a);
+      font-size: 12px;
+    }
+
+    .chain-step span {
+      color: #465364;
+      font-size: 11px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .chain-arrow {
+      align-self: center;
+      color: color-mix(in srgb, var(--tone) 70%, #17202a);
+      font-weight: 900;
+    }
+
+    .score-tiles {
+      display: grid;
+      gap: 3px;
+      justify-content: center;
+      margin-top: 4px;
+    }
+
+    .score-tiles.time {
+      grid-template-columns: repeat(6, 9px);
+    }
+
+    .score-tiles.variate {
+      grid-template-columns: repeat(3, 12px);
+    }
+
+    .score-tiles i {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      background: color-mix(in srgb, var(--tone) 18%, #fff);
+      border: 1px solid color-mix(in srgb, var(--tone) 32%, var(--line));
+    }
+
+    .encoder-takeaway {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--line));
+      background: color-mix(in srgb, var(--tone) 6%, #fff);
+      color: #344053;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1080px) {
+      .mx-outer { grid-template-columns: 1fr; }
+      .mx-layout-row { grid-template-columns: 1fr; }
+      .mx-layout-row .mx-arrow-box { padding-top: 0; }
+      .mx-arrows.mx-arrows-row {
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: 1fr;
+        width: 100%;
+      }
+      .mx-tokens { grid-template-columns: repeat(3, 1fr); }
+      .mx-tokens.mx-tokens-row {
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: auto;
+      }
+      .encoder-chain {
+        grid-template-columns: 1fr;
+      }
+      .chain-arrow {
+        justify-self: center;
+        transform: rotate(90deg);
+      }
+    }
+
+    @media (max-width: 680px) {
+      .mx-tokens { grid-template-columns: repeat(2, 1fr); }
+      .mx-mat-wrap { grid-template-columns: 40px repeat(6, 1fr); }
+      .mx-rh { font-size: 9px; }
+      .mx-ch { font-size: 9px; }
+      .mx-cell { font-size: 11px; min-height: 28px; }
+    }
+
+    @media (max-width: 1080px) {
+      header,
+      .comparison,
+      .encoder-compare,
+      .architecture {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        justify-content: flex-start;
+      }
+
+      .mode-bar,
+      .insight-panel,
+      .complexity-grid,
+      .takeaway-row {
+        grid-template-columns: 1fr;
+      }
+
+      .mode-controls {
+        width: 100%;
+      }
+
+      .section-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+    }
+
+    @media (max-width: 680px) {
+      main { padding: 18px 14px 34px; }
+      header,
+      .mode-bar,
+      .insight-panel,
+      .comparison,
+      .panel,
+      .content,
+      .matrix-area,
+      .grid-wrap,
+      .series-grid,
+      .encoder-compare,
+      .encoder-card,
+      .stage-board,
+      .complexity-grid,
+      .takeaway-row {
+        max-width: 100%;
+      }
+      .matrix-area {
+        grid-template-columns: 1fr;
+        min-height: 0;
+      }
+      .axis-row,
+      .complexity-line {
+        grid-template-columns: 1fr;
+      }
+      .stage-card {
+        grid-template-columns: 30px minmax(0, 1fr);
+      }
+      .stage-matrix.time {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .token-strip.time {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .shape-row {
+        grid-template-columns: 1fr;
+      }
+      .shape-arrow {
+        justify-self: center;
+        transform: rotate(90deg);
+      }
+      .axis-labels {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: auto;
+      }
+      .axis-label-stack {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: auto;
+      }
+      .cell { font-size: 10px; }
+      .var-label { font-size: 11px; padding: 8px 7px; }
+      .note-grid { grid-template-columns: 1fr; }
+      .panel-head { flex-direction: column; }
+      .attention-map { grid-template-columns: 46px repeat(3, 1fr); }
+      .mode-copy span,
+      .insight span,
+      .caption,
+      .subtitle {
+        word-break: break-all;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main style="--active-tone: var(--teal)">
+    <header>
+      <div>
+        <h1>iTransformer: 시간축을 뒤집어 보는 Transformer</h1>
+      </div>
+    </header>
+
+    <div class="mode-bar" aria-label="토큰 관점 전환">
+      <div class="mode-copy">
+        <strong id="modeTitle">지금 선택: iTransformer의 변수 토큰 관점</strong>
+        <span id="modeStatus" aria-live="polite">각 변수의 전체 lookback 구간을 하나의 토큰으로 보고, attention이 변수 간 상관을 학습합니다.</span>
+      </div>
+      <div class="mode-controls">
+        <button class="mode-button" type="button" data-token-mode="time" aria-pressed="false">시간 토큰</button>
+        <button class="mode-button" type="button" data-token-mode="variate" aria-pressed="true">변수 토큰</button>
+      </div>
+    </div>
+
+    <section>
+      <div class="section-title">
+        <h2>Figure 2: 무엇을 토큰으로 보나</h2>
+        <p class="caption">동일한 입력 행렬을 두 관점으로 토큰화합니다.</p>
+      </div>
+
+      <div class="insight-panel">
+        <div class="insight" style="--tone: var(--violet)">
+          <strong>기존 방식</strong>
+          <span>토큰 수는 시간 길이 T입니다. 한 토큰 안에 여러 변수의 값이 함께 들어갑니다.</span>
+        </div>
+        <div class="insight" style="--tone: var(--teal)">
+          <strong>iTransformer 방식</strong>
+          <span>토큰 수는 변수 개수 N입니다. 한 토큰 안에는 한 변수의 과거 궤적 전체가 들어갑니다.</span>
+        </div>
+        <div class="insight" style="--tone: var(--green)">
+          <strong>발표 포인트</strong>
+          <span>구조를 새로 만든 것이 아니라, Transformer block이 바라보는 축을 바꾼 것이 핵심입니다.</span>
+        </div>
+      </div>
+
+      <!-- ── Matrix-first comparison ── -->
+      <div class="mx-outer comparison has-focus" id="tokenComparison">
+
+        <!-- ── Vanilla Transformer panel ── -->
+        <article class="panel mx-panel" data-token-panel="time">
+          <div class="panel-head">
+            <div>
+              <h3>기존 시계열 Transformer</h3>
+              <p>행렬을 <strong>세로(열)</strong>로 잘라 시간 토큰 T=6개를 만듭니다.</p>
+            </div>
+            <span class="badge">Temporal Tokens</span>
+          </div>
+          <div class="content">
+
+            <!-- matrix + tokens layout -->
+            <div class="mx-layout">
+
+              <!-- 3×6 matrix -->
+              <div class="mx-mat-wrap">
+                <div class="mx-corner"></div>
+                <div class="mx-col-heads">
+                  <span class="mx-ch" data-col="0">t₁</span>
+                  <span class="mx-ch" data-col="1">t₂</span>
+                  <span class="mx-ch" data-col="2">t₃</span>
+                  <span class="mx-ch" data-col="3">t₄</span>
+                  <span class="mx-ch" data-col="4">t₅</span>
+                  <span class="mx-ch" data-col="5">t₆</span>
+                </div>
+                <div class="mx-row-heads">
+                  <span class="mx-rh" style="color:var(--blue)">기온</span>
+                  <span class="mx-rh" style="color:var(--amber)">습도</span>
+                  <span class="mx-rh" style="color:var(--rose)">CO₂</span>
+                </div>
+                <div class="mx-grid" id="time-grid">
+                  <!-- row 0: 기온 -->
+                  <div class="mx-cell" data-row="0" data-col="0" style="--rc:var(--blue)">18</div>
+                  <div class="mx-cell" data-row="0" data-col="1" style="--rc:var(--blue)">19</div>
+                  <div class="mx-cell" data-row="0" data-col="2" style="--rc:var(--blue)">21</div>
+                  <div class="mx-cell" data-row="0" data-col="3" style="--rc:var(--blue)">24</div>
+                  <div class="mx-cell" data-row="0" data-col="4" style="--rc:var(--blue)">25</div>
+                  <div class="mx-cell" data-row="0" data-col="5" style="--rc:var(--blue)">23</div>
+                  <!-- row 1: 습도 -->
+                  <div class="mx-cell" data-row="1" data-col="0" style="--rc:var(--amber)">62</div>
+                  <div class="mx-cell" data-row="1" data-col="1" style="--rc:var(--amber)">64</div>
+                  <div class="mx-cell" data-row="1" data-col="2" style="--rc:var(--amber)">61</div>
+                  <div class="mx-cell" data-row="1" data-col="3" style="--rc:var(--amber)">58</div>
+                  <div class="mx-cell" data-row="1" data-col="4" style="--rc:var(--amber)">57</div>
+                  <div class="mx-cell" data-row="1" data-col="5" style="--rc:var(--amber)">60</div>
+                  <!-- row 2: CO₂ -->
+                  <div class="mx-cell" data-row="2" data-col="0" style="--rc:var(--rose)">41</div>
+                  <div class="mx-cell" data-row="2" data-col="1" style="--rc:var(--rose)">43</div>
+                  <div class="mx-cell" data-row="2" data-col="2" style="--rc:var(--rose)">48</div>
+                  <div class="mx-cell" data-row="2" data-col="3" style="--rc:var(--rose)">57</div>
+                  <div class="mx-cell" data-row="2" data-col="4" style="--rc:var(--rose)">64</div>
+                  <div class="mx-cell" data-row="2" data-col="5" style="--rc:var(--rose)">61</div>
+                </div>
+              </div>
+
+              <!-- cut direction arrow -->
+              <div class="mx-arrow-box">
+                <div class="mx-cut-label">열(column) 방향으로 자름</div>
+                <div class="mx-arrows">
+                  <span class="mx-down-arrow">↓</span>
+                  <span class="mx-down-arrow">↓</span>
+                  <span class="mx-down-arrow">↓</span>
+                  <span class="mx-down-arrow">↓</span>
+                  <span class="mx-down-arrow">↓</span>
+                  <span class="mx-down-arrow">↓</span>
+                </div>
+              </div>
+
+              <!-- resulting tokens -->
+              <div class="mx-tokens" id="time-tokens">
+                <div class="mx-tok mx-tok-time" data-col="0"
+                  onmouseenter="hlCol('time-grid',0)" onmouseleave="hlCol('time-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--violet)">t₁</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">18</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">62</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">41</span>
+                  </div>
+                  <span class="mx-tok-sub">기온·습도·CO₂ 혼합</span>
+                </div>
+                <div class="mx-tok mx-tok-time" data-col="1"
+                  onmouseenter="hlCol('time-grid',1)" onmouseleave="hlCol('time-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--violet)">t₂</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">19</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">64</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">43</span>
+                  </div>
+                </div>
+                <div class="mx-tok mx-tok-time" data-col="2"
+                  onmouseenter="hlCol('time-grid',2)" onmouseleave="hlCol('time-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--violet)">t₃</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">21</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">61</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">48</span>
+                  </div>
+                </div>
+                <div class="mx-tok mx-tok-time" data-col="3"
+                  onmouseenter="hlCol('time-grid',3)" onmouseleave="hlCol('time-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--violet)">t₄</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">24</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">58</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">57</span>
+                  </div>
+                </div>
+                <div class="mx-tok mx-tok-time" data-col="4"
+                  onmouseenter="hlCol('time-grid',4)" onmouseleave="hlCol('time-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--violet)">t₅</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">25</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">57</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">64</span>
+                  </div>
+                </div>
+                <div class="mx-tok mx-tok-time" data-col="5"
+                  onmouseenter="hlCol('time-grid',5)" onmouseleave="hlCol('time-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--violet)">t₆</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">23</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">60</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">61</span>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /mx-layout -->
+
+            <div class="mx-summary">
+              <span class="mx-sum-item mx-sum-bad">토큰 수: T = 6개</span>
+              <span class="mx-sum-item mx-sum-bad">Attention map: 6×6 = 36 scores</span>
+              <span class="mx-sum-item mx-sum-warn">각 토큰에 서로 다른 물리량이 혼합됨</span>
+            </div>
+            <div class="mx-calc-note" style="--tone: var(--violet)">
+              <strong>계산량 직관:</strong> attention은 토큰끼리 모두 비교하므로 시간 토큰 6개면 6×6개의 비교가 생깁니다.
+              lookback이 길어져 시간 토큰이 늘수록 비교 수가 제곱으로 커집니다.
+            </div>
+          </div>
+        </article>
+
+        <!-- ── iTransformer panel ── -->
+        <article class="panel mx-panel is-active" data-token-panel="variate">
+          <div class="panel-head">
+            <div>
+              <h3>iTransformer</h3>
+              <p>행렬을 <strong>가로(행)</strong>로 잘라 변수 토큰 N=3개를 만듭니다.</p>
+            </div>
+            <span class="badge inv">Variate Tokens</span>
+          </div>
+          <div class="content">
+
+            <div class="mx-layout mx-layout-row">
+
+              <!-- 3×6 matrix -->
+              <div class="mx-mat-wrap">
+                <div class="mx-corner"></div>
+                <div class="mx-col-heads">
+                  <span class="mx-ch">t₁</span>
+                  <span class="mx-ch">t₂</span>
+                  <span class="mx-ch">t₃</span>
+                  <span class="mx-ch">t₄</span>
+                  <span class="mx-ch">t₅</span>
+                  <span class="mx-ch">t₆</span>
+                </div>
+                <div class="mx-row-heads">
+                  <span class="mx-rh" style="color:var(--blue)">기온</span>
+                  <span class="mx-rh" style="color:var(--amber)">습도</span>
+                  <span class="mx-rh" style="color:var(--rose)">CO₂</span>
+                </div>
+                <div class="mx-grid" id="var-grid">
+                  <div class="mx-cell" data-row="0" data-col="0" style="--rc:var(--blue)">18</div>
+                  <div class="mx-cell" data-row="0" data-col="1" style="--rc:var(--blue)">19</div>
+                  <div class="mx-cell" data-row="0" data-col="2" style="--rc:var(--blue)">21</div>
+                  <div class="mx-cell" data-row="0" data-col="3" style="--rc:var(--blue)">24</div>
+                  <div class="mx-cell" data-row="0" data-col="4" style="--rc:var(--blue)">25</div>
+                  <div class="mx-cell" data-row="0" data-col="5" style="--rc:var(--blue)">23</div>
+                  <div class="mx-cell" data-row="1" data-col="0" style="--rc:var(--amber)">62</div>
+                  <div class="mx-cell" data-row="1" data-col="1" style="--rc:var(--amber)">64</div>
+                  <div class="mx-cell" data-row="1" data-col="2" style="--rc:var(--amber)">61</div>
+                  <div class="mx-cell" data-row="1" data-col="3" style="--rc:var(--amber)">58</div>
+                  <div class="mx-cell" data-row="1" data-col="4" style="--rc:var(--amber)">57</div>
+                  <div class="mx-cell" data-row="1" data-col="5" style="--rc:var(--amber)">60</div>
+                  <div class="mx-cell" data-row="2" data-col="0" style="--rc:var(--rose)">41</div>
+                  <div class="mx-cell" data-row="2" data-col="1" style="--rc:var(--rose)">43</div>
+                  <div class="mx-cell" data-row="2" data-col="2" style="--rc:var(--rose)">48</div>
+                  <div class="mx-cell" data-row="2" data-col="3" style="--rc:var(--rose)">57</div>
+                  <div class="mx-cell" data-row="2" data-col="4" style="--rc:var(--rose)">64</div>
+                  <div class="mx-cell" data-row="2" data-col="5" style="--rc:var(--rose)">61</div>
+                </div>
+              </div>
+
+              <!-- cut direction arrow -->
+              <div class="mx-arrow-box mx-arrow-row">
+                <div class="mx-cut-label">행(row) 방향으로 자름</div>
+                <div class="mx-arrows mx-arrows-row">
+                  <span class="mx-right-arrow">→</span>
+                  <span class="mx-right-arrow">→</span>
+                  <span class="mx-right-arrow">→</span>
+                </div>
+              </div>
+
+              <!-- resulting tokens -->
+              <div class="mx-tokens mx-tokens-row" id="var-tokens">
+                <div class="mx-tok mx-tok-var" data-row="0"
+                  onmouseenter="hlRow('var-grid',0)" onmouseleave="hlRow('var-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--blue)">기온 토큰</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--blue)">18</span>
+                    <span class="mx-tv" style="--tc:var(--blue)">19</span>
+                    <span class="mx-tv" style="--tc:var(--blue)">21</span>
+                    <span class="mx-tv" style="--tc:var(--blue)">24</span>
+                    <span class="mx-tv" style="--tc:var(--blue)">25</span>
+                    <span class="mx-tv" style="--tc:var(--blue)">23</span>
+                  </div>
+                  <span class="mx-tok-sub">기온의 전체 lookback</span>
+                </div>
+                <div class="mx-tok mx-tok-var" data-row="1"
+                  onmouseenter="hlRow('var-grid',1)" onmouseleave="hlRow('var-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--amber)">습도 토큰</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--amber)">62</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">64</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">61</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">58</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">57</span>
+                    <span class="mx-tv" style="--tc:var(--amber)">60</span>
+                  </div>
+                  <span class="mx-tok-sub">습도의 전체 lookback</span>
+                </div>
+                <div class="mx-tok mx-tok-var" data-row="2"
+                  onmouseenter="hlRow('var-grid',2)" onmouseleave="hlRow('var-grid',-1)">
+                  <span class="mx-tok-name" style="color:var(--rose)">CO₂ 토큰</span>
+                  <div class="mx-tok-vals">
+                    <span class="mx-tv" style="--tc:var(--rose)">41</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">43</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">48</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">57</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">64</span>
+                    <span class="mx-tv" style="--tc:var(--rose)">61</span>
+                  </div>
+                  <span class="mx-tok-sub">CO₂의 전체 lookback</span>
+                </div>
+              </div>
+
+            </div><!-- /mx-layout -->
+
+            <div class="mx-summary">
+              <span class="mx-sum-item mx-sum-good">토큰 수: N = 3개</span>
+              <span class="mx-sum-item mx-sum-good">Attention map: 3×3 = 9 scores</span>
+              <span class="mx-sum-item mx-sum-good">각 토큰이 단일 변수의 역사 전체를 담음</span>
+            </div>
+            <div class="mx-calc-note" style="--tone: var(--teal)">
+              <strong>계산량 직관:</strong> iTransformer는 변수 토큰끼리 비교하므로 이 예시에서는 3×3개의 비교만 필요합니다.
+              긴 lookback은 각 변수 토큰 내부에 들어가고, attention 비교 수는 변수 개수에 더 직접적으로 묶입니다.
+            </div>
+          </div>
+        </article>
+
+      </div><!-- /mx-outer -->
+    </section>
+
+    <section>
+      <div class="section-title">
+        <h2>Figure 2 관점에서 encoder를 지나면</h2>
+        <p class="caption">토큰을 어떻게 만들었는지가 attention score 개수를 바로 결정합니다.</p>
+      </div>
+
+      <article class="panel">
+        <div class="content">
+          <div class="encoder-compare">
+            <div class="encoder-card" style="--tone: var(--violet)">
+              <div class="encoder-card-head">
+                <h3>기존 Transformer</h3>
+                <span class="shape-pill">시간 토큰 6개</span>
+              </div>
+              <div class="encoder-body encoder-sketch">
+                <div class="encoder-chain">
+                  <div class="chain-step">
+                    <strong>Token</strong>
+                    <span>t₁, t₂, ... t₆<br>각 토큰은 [기온, 습도, CO₂]</span>
+                  </div>
+                  <div class="chain-arrow">→</div>
+                  <div class="chain-step">
+                    <strong>Embedding</strong>
+                    <span>6개 시간 토큰을<br>d_model 차원으로 변환</span>
+                  </div>
+                  <div class="chain-arrow">→</div>
+                  <div class="chain-step">
+                    <strong>Self-Attention</strong>
+                    <span>시간 토큰끼리 모두 비교</span>
+                    <div class="score-tiles time" aria-hidden="true">
+                      <i></i><i></i><i></i><i></i><i></i><i></i>
+                      <i></i><i></i><i></i><i></i><i></i><i></i>
+                      <i></i><i></i><i></i><i></i><i></i><i></i>
+                      <i></i><i></i><i></i><i></i><i></i><i></i>
+                      <i></i><i></i><i></i><i></i><i></i><i></i>
+                      <i></i><i></i><i></i><i></i><i></i><i></i>
+                    </div>
+                    <span><strong>6×6 = 36 scores</strong></span>
+                  </div>
+                </div>
+                <div class="encoder-takeaway" style="--tone: var(--violet)">
+                  lookback이 길어지면 시간 토큰 수 T가 늘고, attention map은 T×T로 커집니다.
+                  그래서 긴 과거 구간을 볼수록 score 수가 제곱으로 증가합니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="encoder-card" style="--tone: var(--teal)">
+              <div class="encoder-card-head">
+                <h3>iTransformer</h3>
+                <span class="shape-pill">변수 토큰 3개</span>
+              </div>
+              <div class="encoder-body encoder-sketch">
+                <div class="encoder-chain">
+                  <div class="chain-step">
+                    <strong>Token</strong>
+                    <span>기온, 습도, CO₂<br>각 토큰은 전체 lookback</span>
+                  </div>
+                  <div class="chain-arrow">→</div>
+                  <div class="chain-step">
+                    <strong>Embedding</strong>
+                    <span>3개 변수 토큰을<br>d_model 차원으로 변환</span>
+                  </div>
+                  <div class="chain-arrow">→</div>
+                  <div class="chain-step">
+                    <strong>Self-Attention</strong>
+                    <span>변수 토큰끼리 모두 비교</span>
+                    <div class="score-tiles variate" aria-hidden="true">
+                      <i></i><i></i><i></i>
+                      <i></i><i></i><i></i>
+                      <i></i><i></i><i></i>
+                    </div>
+                    <span><strong>3×3 = 9 scores</strong></span>
+                  </div>
+                </div>
+                <div class="encoder-takeaway" style="--tone: var(--teal)">
+                  긴 lookback은 각 변수 토큰 내부에 들어갑니다. attention은 변수 토큰 N개끼리 비교하므로,
+                  이 예시에서는 N×N = 3×3 score만 만듭니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+  </main>
+  <script>
+    const modeMeta = {
+      time: {
+        title: "지금 선택: 기존 Transformer의 시간 토큰 관점",
+        status: "같은 시각의 여러 변수를 하나의 토큰으로 묶고, attention이 시간 토큰 사이의 의존성을 봅니다.",
+        tone: "var(--violet)",
+      },
+      variate: {
+        title: "지금 선택: iTransformer의 변수 토큰 관점",
+        status: "각 변수의 전체 lookback 구간을 하나의 토큰으로 보고, attention이 변수 간 상관을 학습합니다.",
+        tone: "var(--teal)",
+      },
+    };
+
+    function setTokenMode(mode) {
+      const meta = modeMeta[mode];
+      if (!meta) return;
+
+      document.querySelector("main").style.setProperty("--active-tone", meta.tone);
+      document.getElementById("modeTitle").textContent = meta.title;
+      document.getElementById("modeStatus").textContent = meta.status;
+
+      document.querySelectorAll("[data-token-mode]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.tokenMode === mode));
+      });
+
+      document.querySelectorAll("[data-token-panel]").forEach((panel) => {
+        panel.classList.toggle("is-active", panel.dataset.tokenPanel === mode);
+      });
+    }
+
+    document.querySelectorAll("[data-token-mode]").forEach((button) => {
+      button.addEventListener("click", () => setTokenMode(button.dataset.tokenMode));
+    });
+
+    setTokenMode("variate");
+
+    // ── Matrix hover helpers ──
+    function hlCol(gridId, col) {
+      document.querySelectorAll(`#${gridId} .mx-cell`).forEach(cell => {
+        cell.classList.remove('col-hl');
+        if (col >= 0 && parseInt(cell.dataset.col) === col) {
+          cell.classList.add('col-hl');
+        }
+      });
+    }
+
+    function hlRow(gridId, row) {
+      document.querySelectorAll(`#${gridId} .mx-cell`).forEach(cell => {
+        cell.classList.remove('row-hl');
+        if (row >= 0 && parseInt(cell.dataset.row) === row) {
+          cell.classList.add('row-hl');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iTransformer Figure 4 — 실제 Forward Pass 시각화</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --bg2: #161b26;
+      --bg3: #1e2535;
+      --panel: #1e2535;
+      --border: #2e3a50;
+      --ink: #e8edf5;
+      --muted: #7a8ba3;
+      --blue: #4d9fff;
+      --amber: #f5a623;
+      --rose: #f26d7d;
+      --teal: #2dd4bf;
+      --violet: #a78bfa;
+      --green: #4ade80;
+      --yellow: #facc15;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:auto}
+
+    /* ── HEADER ── */
+    .header{
+      padding:24px 32px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .header h1{font-size:clamp(18px,2.4vw,28px);font-weight:800;letter-spacing:-.02em}
+    .header h1 span{color:var(--teal)}
+    .header p{color:var(--muted);font-size:14px;margin-top:6px;padding-bottom:20px}
+    .back-link{
+      display:inline-flex;align-items:center;gap:6px;
+      color:var(--muted);font-size:13px;text-decoration:none;
+      margin-bottom:16px;
+    }
+    .back-link:hover{color:var(--ink)}
+
+    /* ── STEP BAR ── */
+    .stepbar{
+      display:flex;align-items:center;justify-content:center;
+      gap:0;padding:20px 24px;
+      border-bottom:1px solid var(--border);
+      flex-wrap:wrap;gap:4px;
+    }
+    .stepbar-item{
+      display:flex;flex-direction:column;align-items:center;gap:4px;
+      cursor:pointer;padding:4px 10px;border-radius:8px;
+      transition:background .2s;
+      min-width:68px;
+    }
+    .stepbar-item:hover{background:var(--bg3)}
+    .stepbar-item.active .stepnum{
+      background:var(--teal);color:#0f1117;font-weight:700;
+    }
+    .stepbar-item.done .stepnum{
+      background:var(--bg3);color:var(--teal);border-color:var(--teal);
+    }
+    .stepnum{
+      width:28px;height:28px;border-radius:50%;
+      border:2px solid var(--border);
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:600;
+      background:var(--bg2);
+      transition:all .3s;
+    }
+    .steplabel{font-size:10px;color:var(--muted);text-align:center;line-height:1.3;max-width:72px}
+    .stepbar-item.active .steplabel{color:var(--teal)}
+
+    /* ── MAIN LAYOUT ── */
+    .main{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 320px;
+      gap:0;
+      min-height:calc(100vh - 200px);
+    }
+    @media(max-width:900px){.main{grid-template-columns:1fr}}
+
+    /* ── STAGE ── */
+    .stage{
+      padding:28px 32px;
+      border-right:1px solid var(--border);
+      min-width:0;
+    }
+    .stage-title{
+      font-size:22px;font-weight:700;margin-bottom:6px;
+      display:flex;align-items:center;gap:10px;
+    }
+    .stage-title .badge{
+      font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;
+      background:var(--teal);color:#0f1117;
+    }
+    .stage-formula{
+      font-family:monospace;font-size:13px;
+      color:var(--teal);
+      background:var(--bg3);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px 16px;
+      margin:12px 0 20px;
+      display:inline-block;
+    }
+    .stage-body{
+      min-height:320px;
+      overflow-x:auto;
+      padding-bottom:4px;
+    }
+    .step-panel{max-width:100%;overflow-x:visible}
+    .stage-insight{
+      margin-top:20px;
+      border-left:3px solid var(--teal);
+      padding:10px 16px;
+      background:var(--bg3);
+      border-radius:0 8px 8px 0;
+      font-size:13.5px;line-height:1.6;
+      color:var(--muted);
+    }
+    .stage-insight strong{color:var(--ink)}
+
+    /* ── SIDEBAR ── */
+    .sidebar{
+      padding:24px 20px;
+      background:var(--bg2);
+      overflow-y:auto;
+    }
+    .sidebar h3{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+    .arch-flow{display:flex;flex-direction:column;gap:0;align-items:stretch}
+    .arch-block{
+      padding:10px 14px;border-radius:8px;
+      border:1.5px solid var(--border);
+      font-size:12.5px;font-weight:600;
+      text-align:center;
+      background:var(--bg3);
+      cursor:pointer;
+      transition:all .2s;
+    }
+    .arch-block.active{
+      border-color:var(--teal);
+      background:rgba(45,212,191,.12);
+      color:var(--teal);
+    }
+    .arch-block sub{font-size:10px;font-weight:400;color:var(--muted);display:block}
+    .arch-arrow{
+      width:22px;
+      min-height:18px;
+      margin:0 auto;
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:16px;
+      font-weight:800;
+    }
+    .arch-arrow.active{color:var(--teal)}
+    .sidebar-shapes{margin-top:24px}
+    .shape-row{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:6px 0;border-bottom:1px solid var(--border);
+      font-size:12px;
+    }
+    .shape-row:last-child{border-bottom:none}
+    .shape-name{color:var(--muted)}
+    .shape-val{
+      font-family:monospace;font-size:11px;
+      color:var(--teal);
+      background:var(--bg3);
+      padding:2px 8px;border-radius:4px;
+    }
+
+    /* ── CONTROLS ── */
+    .controls{
+      display:flex;align-items:center;justify-content:center;
+      gap:12px;padding:20px;
+      border-top:1px solid var(--border);
+      background:var(--bg2);
+    }
+    .btn{
+      display:flex;align-items:center;gap:6px;
+      padding:10px 20px;border-radius:8px;
+      border:1.5px solid var(--border);
+      background:var(--bg3);color:var(--ink);
+      font-size:14px;font-weight:600;cursor:pointer;
+      transition:all .2s;
+    }
+    .btn:hover{border-color:var(--teal);color:var(--teal)}
+    .btn.primary{background:var(--teal);color:#0f1117;border-color:var(--teal)}
+    .btn.primary:hover{background:#1fb8a4}
+    .btn:disabled{opacity:.3;cursor:not-allowed}
+    .step-counter{
+      font-size:13px;color:var(--muted);min-width:70px;text-align:center;
+    }
+
+    /* ── MATRIX GRID ── */
+    .mat{
+      display:inline-grid;
+      gap:2px;
+      font-family:monospace;font-size:12px;
+      max-width:100%;
+    }
+    .mat-cell{
+      display:flex;align-items:center;justify-content:center;
+      min-width:38px;height:28px;
+      border-radius:5px;
+      background:var(--bg3);
+      border:1px solid var(--border);
+      transition:all .4s;
+      padding:0 3px;
+      font-size:9.5px;
+      line-height:1;
+      white-space:nowrap;
+    }
+    .mat-cell.hi{border-color:currentColor;box-shadow:0 0 8px currentColor;}
+    .mat-label{
+      font-size:11px;color:var(--muted);
+      text-align:center;margin-top:6px;
+      font-style:italic;
+    }
+    .mat-title{
+      font-size:11.5px;font-weight:700;color:var(--muted);
+      margin-bottom:6px;letter-spacing:.04em;
+    }
+
+    /* ── HEAT ── */
+    .heatmap{
+      display:inline-grid;
+      gap:3px;
+    }
+    .heat-cell{
+      display:flex;align-items:center;justify-content:center;
+      width:72px;height:52px;
+      border-radius:6px;
+      font-weight:700;font-size:13px;
+      transition:all .4s;
+    }
+    .heat-axis{
+      display:flex;align-items:center;justify-content:center;
+      width:72px;height:52px;
+      font-size:11px;color:var(--muted);font-weight:600;
+    }
+
+    /* ── TOKEN ROW ── */
+    .token-row{
+      display:flex;align-items:center;gap:8px;
+      margin:8px 0;
+      flex-wrap:wrap;
+    }
+    .token-label{
+      font-size:12px;font-weight:700;min-width:56px;
+      padding:4px 10px;border-radius:6px;
+      border:1.5px solid currentColor;
+      text-align:center;
+    }
+    .token-vals{
+      display:flex;gap:4px;flex-wrap:wrap;
+    }
+    .token-val{
+      min-width:42px;height:32px;
+      display:flex;align-items:center;justify-content:center;
+      border-radius:5px;
+      background:var(--bg3);
+      border:1px solid var(--border);
+      font-family:monospace;font-size:11.5px;
+      transition:background .4s, border-color .4s;
+    }
+
+    /* ── COMPARE PANEL ── */
+    .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:700px){.compare{grid-template-columns:1fr}}
+
+    /* ── ATTENTION WRAP ── */
+    .attn-wrap{
+      display:flex;gap:32px;align-items:flex-start;
+      flex-wrap:wrap;
+      max-width:100%;
+      overflow-x:auto;
+      padding-bottom:4px;
+    }
+
+    /* ── FFN VIZ ── */
+    .ffn-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;max-width:100%;overflow-x:auto;padding-bottom:4px}
+    .ffn-layer{
+      display:flex;flex-direction:column;gap:4px;
+      align-items:center;
+    }
+    .ffn-node{
+      width:36px;height:36px;border-radius:50%;
+      border:2px solid var(--border);
+      background:var(--bg3);
+      display:flex;align-items:center;justify-content:center;
+      font-size:10px;font-family:monospace;
+      transition:all .4s;
+    }
+    .ffn-node.active{border-color:var(--teal);box-shadow:0 0 8px var(--teal)}
+    .ffn-arrow{
+      font-size:20px;color:var(--muted);
+      align-self:center;
+    }
+    .ffn-title{font-size:11px;color:var(--muted);text-align:center;margin-top:4px}
+
+    /* ── STEP ANIM ── */
+    .step-panel{
+      animation: none;
+    }
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    /* ── PIPELINE ── */
+    .pipeline{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:0;
+      max-width:480px;
+    }
+    .pipe-block{
+      width:100%;
+      padding:8px 14px;
+      border-radius:8px;
+      border:1.5px solid var(--border);
+      background:var(--bg3);
+      text-align:center;
+    }
+    .pipe-block.active{
+      border-color:var(--teal);
+      background:rgba(45,212,191,.1);
+    }
+    .pipe-block .pipe-name{font-size:13px;font-weight:700}
+    .pipe-block .pipe-shape{font-size:11px;color:var(--muted);font-family:monospace;margin-top:3px}
+    .pipe-block .pipe-desc{font-size:10.5px;color:var(--muted);margin-top:2px}
+    .pipe-arrow{
+      display:flex;flex-direction:column;align-items:center;
+      padding:0;color:var(--muted);font-size:14px;
+      line-height:1.2;
+    }
+
+    /* ── WEIGHT MINI ── */
+    .weight-box{
+      background:var(--bg3);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:10px 14px;
+      font-size:11px;font-family:monospace;
+      color:var(--muted);
+    }
+    .weight-box strong{color:var(--ink);font-size:12px;display:block;margin-bottom:6px}
+
+    /* ── residual box ── */
+    .res-box{
+      display:flex;align-items:center;gap:12px;
+      flex-wrap:wrap;
+      max-width:100%;
+      overflow-x:auto;
+      padding-bottom:4px;
+    }
+    .res-plus{font-size:24px;color:var(--muted);font-weight:300}
+
+    .tag{
+      display:inline-block;
+      padding:2px 8px;border-radius:4px;
+      font-size:11px;font-weight:700;
+      margin-right:4px;
+    }
+    @media(max-width:700px){
+      .header{padding:18px 18px 0}
+      .stage{padding:20px 16px}
+      .stage-title{font-size:18px;align-items:flex-start;flex-wrap:wrap}
+      .stage-formula{font-size:11px;max-width:100%;overflow-x:auto}
+      .mat-cell{min-width:36px;height:28px;font-size:9.5px}
+      .heat-cell,.heat-axis{width:58px;height:44px;font-size:10.5px}
+      .controls{gap:8px;padding:14px;flex-wrap:wrap}
+      .btn{padding:8px 12px;font-size:12px}
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back-link" href="/">← 개요 페이지로</a>
+  <h1>iTransformer <span>Figure 4</span> — 실제 Forward Pass 단계별 시각화</h1>
+  <p>기온·습도·CO₂ 3개 변수의 과거 6시점을 보고, 각 변수의 미래 4시점(t₇~t₁₀)을 예측하는 forecasting task입니다. (d_model=10, heads=5, d_head=2, d_ff=8)</p>
+</div>
+
+<div class="stepbar" id="stepbar"></div>
+
+<div class="main">
+  <div class="stage">
+    <div id="stage-content"></div>
+  </div>
+  <div class="sidebar">
+    <h3>Encoder 구조</h3>
+    <div class="arch-flow" id="arch-flow"></div>
+    <div class="sidebar-shapes" id="sidebar-shapes"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="btn-prev">◀ 이전</button>
+  <button class="btn primary" id="btn-play">▶ 자동재생</button>
+  <span class="step-counter" id="step-counter"></span>
+  <button class="btn" id="btn-next">다음 ▶</button>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  DATA & MATH
+// ════════════════════════════════════════════
+const VARS = [
+  {name:'기온', unit:'°C', color:'var(--blue)',  raw:[18,19,21,24,25,23]},
+  {name:'습도', unit:'%',  color:'var(--amber)', raw:[62,64,61,58,57,60]},
+  {name:'CO₂',  unit:'×10',color:'var(--rose)',  raw:[41,43,48,57,64,61]}
+];
+const T=6, N=3, D_MODEL=10, N_HEADS=5, D_HEAD=2, D_FF=8;
+
+function mean(a){return a.reduce((s,x)=>s+x,0)/a.length}
+function std(a){const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/a.length)}
+function layernorm(a){const m=mean(a),s=std(a)+1e-8;return a.map(x=>(x-m)/s)}
+function softmax(a){const mx=Math.max(...a),e=a.map(x=>Math.exp(x-mx)),s=e.reduce((t,v)=>t+v,0);return e.map(x=>x/s)}
+function gelu(x){return 0.5*x*(1+Math.tanh(Math.sqrt(2/Math.PI)*(x+0.044715*x**3)))}
+function fmt(v,d=2){return v.toFixed(d)}
+function fmtArr(a,d=2){return a.map(x=>fmt(x,d))}
+const seed=(i,j,c)=>((i*7+j*3+c)%11-5)*0.14;
+
+// Normalize inputs
+const X_NORM = VARS.map(v=>{const m=mean(v.raw),s=std(v.raw);return v.raw.map(x=>(x-m)/s)});
+
+// Embedding weights W_E (D_MODEL × T)
+const W_E=Array.from({length:D_MODEL},(_,d)=>Array.from({length:T},(_,t)=>seed(d,t,0)));
+
+// H = X_NORM @ W_E^T  (N × D_MODEL)
+const H = X_NORM.map(x=>W_E.map(w=>x.reduce((s,v,k)=>s+v*w[k],0)));
+
+// QKV projection weights per head: each head maps d_model → d_head.
+const W_Q=Array.from({length:N_HEADS},(_,h)=>Array.from({length:D_MODEL},(_,i)=>Array.from({length:D_HEAD},(_,j)=>seed(i,j,h+4))));
+const W_K=Array.from({length:N_HEADS},(_,h)=>Array.from({length:D_MODEL},(_,i)=>Array.from({length:D_HEAD},(_,j)=>seed(i,j,h+9))));
+const W_V=Array.from({length:N_HEADS},(_,h)=>Array.from({length:D_MODEL},(_,i)=>Array.from({length:D_HEAD},(_,j)=>seed(i,j,h+14))));
+
+function project(mat, weights){
+  return mat.map(row=>weights[0].map((_,j)=>row.reduce((s,x,k)=>s+x*weights[k][j],0)));
+}
+
+const HEADS=Array.from({length:N_HEADS},(_,h)=>{
+  const Q=project(H,W_Q[h]);
+  const K=project(H,W_K[h]);
+  const V=project(H,W_V[h]);
+  const scores=Q.map(q=>K.map(k=>q.reduce((s,x,i)=>s+x*k[i],0)/Math.sqrt(D_HEAD)));
+  const A=scores.map(row=>softmax(row));
+  const out=A.map(row=>V[0].map((_,j)=>row.reduce((s,a,i)=>s+a*V[i][j],0)));
+  return {Q,K,V,scores,A,out};
+});
+
+const Q_mat=HEADS[0].Q;
+const K_mat=HEADS[0].K;
+const V_mat=HEADS[0].V;
+const QKT=HEADS[0].scores;
+const A_soft=HEADS[0].A;
+
+// Multi-head attention output = concat(head_1 ... head_5), shape (N × d_model)
+const attn_out=Array.from({length:N},(_,i)=>HEADS.flatMap(head=>head.out[i]));
+
+// Residual + LN
+const U_attn=H.map((h,i)=>h.map((x,j)=>x+attn_out[i][j]));
+const H_attn=U_attn.map(row=>layernorm(row));
+const LN_EXAMPLE_ROW=0;
+const LN_EXAMPLE_U=U_attn[LN_EXAMPLE_ROW];
+const LN_EXAMPLE_MEAN=mean(LN_EXAMPLE_U);
+const LN_EXAMPLE_STD=std(LN_EXAMPLE_U)+1e-8;
+
+// FFN weights  (fixed seed)
+const W1=Array.from({length:D_FF},(_,i)=>Array.from({length:D_MODEL},(_,j)=>seed(i,j,1)));
+const W2=Array.from({length:D_MODEL},(_,i)=>Array.from({length:D_FF},(_,j)=>seed(j,i,2)));
+
+const FFN_out=H_attn.map(h=>{
+  const h1=W1.map(w=>gelu(h.reduce((s,x,k)=>s+x*w[k],0)));
+  return W2.map(w=>h1.reduce((s,x,k)=>s+x*w[k],0));
+});
+
+// Final residual + LN
+const H_next=H_attn.map((h,i)=>layernorm(h.map((x,j)=>x+FFN_out[i][j])));
+
+// Forecast projection weights (D_MODEL → H_FUTURE=4)
+const H_FUTURE=4;
+const W_PROJ=Array.from({length:H_FUTURE},(_,i)=>Array.from({length:D_MODEL},(_,j)=>seed(i,j,3)));
+const FORECAST=H_next.map(h=>W_PROJ.map(w=>h.reduce((s,x,k)=>s+x*w[k],0)));
+const W_PROJ_T=Array.from({length:D_MODEL},(_,d)=>Array.from({length:H_FUTURE},(_,h)=>W_PROJ[h][d]));
+const DENORM_FORECAST=FORECAST.map((row,i)=>{
+  const m=mean(VARS[i].raw), s=std(VARS[i].raw);
+  return row.map(v=>v*s+m);
+});
+
+// ════════════════════════════════════════════
+//  HELPERS: HTML builders
+// ════════════════════════════════════════════
+function colorForVar(i){return ['var(--blue)','var(--amber)','var(--rose)'][i]}
+function nameForVar(i){return ['기온','습도','CO₂'][i]}
+function actualForecastValue(i,v){
+  if(nameForVar(i)==='CO₂') return `${fmt(v*10,2)} ppm`;
+  return `${fmt(v,2)}${VARS[i].unit}`;
+}
+
+function matGrid(rows,cols,cellFn,opts={}){
+  const {gridCols=cols,label='',title=''}=opts;
+  let s='<div>';
+  if(title) s+=`<div class="mat-title">${title}</div>`;
+  s+=`<div class="mat" style="grid-template-columns:repeat(${gridCols},1fr)">`;
+  rows.forEach((row,ri)=>(Array.isArray(row)?row:[row]).forEach((v,ci)=>{
+    s+=cellFn(v,ri,ci);
+  }));
+  s+='</div>';
+  if(label) s+=`<div class="mat-label">${label}</div>`;
+  s+='</div>';
+  return s;
+}
+
+function cell(val,color='',extra=''){
+  const style=color?`color:${color};border-color:${color}40`:'';
+  return `<div class="mat-cell" style="${style}">${typeof val==='number'?fmt(val):val}</div>`;
+}
+
+function tokenRows(data,extra=''){
+  return data.map((row,i)=>`
+    <div class="token-row">
+      <div class="token-label" style="color:${colorForVar(i)}">${nameForVar(i)}</div>
+      <div class="token-vals">${row.map(v=>`<div class="token-val" style="border-color:${colorForVar(i)}30">${typeof v==='number'?fmt(v,2):v}</div>`).join('')}</div>
+      ${extra}
+    </div>`).join('');
+}
+
+function heatCell(v,i,j){
+  const alpha=Math.max(0.08,v);
+  const c=`rgba(45,212,191,${alpha})`;
+  const tc=v>0.4?'#0f1117':'var(--ink)';
+  return `<div class="heat-cell" style="background:${c};color:${tc}">${fmt(v,2)}</div>`;
+}
+
+function heatmap3x3(matrix,rowLabels,colLabels){
+  let s=`<div>`;
+  s+=`<div style="display:inline-grid;grid-template-columns:60px repeat(${colLabels.length},72px);gap:3px">`;
+  s+=`<div class="heat-axis"></div>`;
+  colLabels.forEach(l=>{s+=`<div class="heat-axis" style="font-size:11px;color:var(--muted)">${l}</div>`});
+  matrix.forEach((row,ri)=>{
+    s+=`<div class="heat-axis" style="font-size:11px;color:${colorForVar(ri)}">${rowLabels[ri]}</div>`;
+    row.forEach((v,ci)=>{s+=heatCell(v,ri,ci)});
+  });
+  s+='</div></div>';
+  return s;
+}
+
+function scoremap3x3(matrix,rowLabels,colLabels){
+  let s=`<div>`;
+  s+=`<div style="display:inline-grid;grid-template-columns:60px repeat(${colLabels.length},72px);gap:3px">`;
+  s+=`<div class="heat-axis"></div>`;
+  colLabels.forEach(l=>{s+=`<div class="heat-axis" style="font-size:11px;color:var(--muted)">${l}</div>`});
+  matrix.forEach((row,ri)=>{
+    s+=`<div class="heat-axis" style="font-size:11px;color:${colorForVar(ri)}">${rowLabels[ri]}</div>`;
+    row.forEach(v=>{
+      s+=`<div class="heat-cell" style="background:var(--bg3);color:var(--ink);font-size:11px">${fmt(v,2)}</div>`;
+    });
+  });
+  s+='</div></div>';
+  return s;
+}
+
+function arch(activeBlock){
+  const blocks=[
+    {id:'input',  name:'Input',        shape:`(${N} × ${T})`,  desc:'원본 데이터'},
+    {id:'embed',  name:'Embedding',    shape:`(${N} × ${D_MODEL})`,desc:'MLP: T→d'},
+    {id:'mha',    name:'Multi-Head\nSelf-Attention',shape:`(${N} × ${D_MODEL})`,desc:'변수간 상관'},
+    {id:'add1',   name:'Add & Norm',   shape:`(${N} × ${D_MODEL})`,desc:'잔차 연결'},
+    {id:'ffn',    name:'Feed Forward', shape:`(${N} × ${D_MODEL})`,desc:'변수별 패턴'},
+    {id:'add2',   name:'Add & Norm',   shape:`(${N} × ${D_MODEL})`,desc:'잔차 연결'},
+    {id:'proj',   name:'Projection',   shape:`(${N} × ${H_FUTURE})`, desc:'미래 예측'},
+  ];
+  const visualBlocks=[...blocks].reverse();
+  let s='<div class="arch-flow">';
+  visualBlocks.forEach((b,i)=>{
+    s+=`<div class="arch-block${b.id===activeBlock?' active':''}" onclick="goToBlockStep('${b.id}')">
+      <div class="pipe-name">${b.name}</div>
+      <div class="pipe-shape">${b.shape}</div>
+    </div>`;
+    if(i<visualBlocks.length-1) s+=`<div class="arch-arrow${b.id===activeBlock?' active':''}">↑</div>`;
+  });
+  s+='</div>';
+  return s;
+}
+
+function shapePanel(shapes){
+  return '<div class="sidebar-shapes"><h3 style="margin-top:20px">텐서 형태</h3>'+
+    shapes.map(([n,v])=>`<div class="shape-row"><span class="shape-name">${n}</span><span class="shape-val">${v}</span></div>`).join('')+'</div>';
+}
+
+// ════════════════════════════════════════════
+//  STEPS DEFINITION
+// ════════════════════════════════════════════
+const STEPS=[
+
+// ── STEP 0: Pipeline overview ──
+{
+  label:'전체\n구조',
+  archBlock:'input',
+  shapes:[['입력','과거 6시점 × 3변수'],['출력','미래 4시점 × 3변수']],
+  render(){
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Overview</span>iTransformer Encoder — 전체 흐름</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:14px;margin-bottom:20px">
+          기존 Transformer는 <strong style="color:var(--violet)">시간 토큰</strong>을 사용하지만,
+          iTransformer는 <strong style="color:var(--teal)">변수 토큰</strong>을 사용합니다.
+          각 변수(기온·습도·CO₂)의 전체 lookback 시계열이 하나의 토큰이 되고, 아래 입력에서 시작해 위쪽 예측으로 올라갑니다.
+          여기서는 1시점을 1일로 보고, 과거 6일치 관측값을 넣어 미래 4일(t₇~t₁₀)의 기온·습도·CO₂를 예측하는 예시입니다.
+        </p>
+        <div class="pipeline" style="max-width:440px">
+          ${[
+            ['Output Projection','각 변수 → 미래 4일(t₇~t₁₀) 예측','proj'],
+            ['Add & Norm','잔차 연결 + LayerNorm','add2'],
+            ['Feed Forward Network','변수별 시간 패턴 학습 (d→8→d)','ffn'],
+            ['Add & Norm','잔차 연결 + LayerNorm','add1'],
+            ['Multi-Head Self-Attention','변수 간 의존성/상관 패턴 학습 (3×3 map)','mha'],
+            ['Linear Embedding','각 변수의 6개 과거값 → d_model=10개 특징','embed'],
+            ['Input Matrix','(3 × 6) — 3변수 × 과거 6일','input'],
+          ].map(([name,desc,id],i,arr)=>`
+            <div class="pipe-block${id==='input'?' active':''}">
+              <div class="pipe-name">${name}</div>
+              <div class="pipe-desc">${desc}</div>
+            </div>
+            ${i<arr.length-1?'<div class="pipe-arrow">↑</div>':''}
+          `).join('')}
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>핵심 차이</strong>: iTransformer는 토큰 축을 뒤집어(invert) 변수 차원에서 attention을 수행합니다.
+        Attention이 변수 간 의존성/상관 패턴을 다루고, FFN이 각 변수 토큰의 비선형 표현을 학습하는 역할을 분리합니다.
+        FFN은 한 변수의 lookback 안에 있는 추세, 진폭 변화, 반복 패턴 같은 정보를 예측에 쓰기 좋은 특징으로 바꿔
+        projection 단계가 미래 4일 값을 만들 수 있게 합니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 1: Input Data ──
+{
+  label:'입력\n데이터',
+  archBlock:'input',
+  shapes:[['X','(3 × 6)'],['N','3 변수'],['T','6 타임스텝']],
+  render(){
+    const times=['t₁','t₂','t₃','t₄','t₅','t₆'];
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 1</span>입력 데이터 행렬 X ∈ ℝ^(N×T)</div>
+      <div class="stage-formula">X.shape = (N=3, T=6)</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">3개 변수 × 6개 타임스텝의 관측값입니다.</p>
+        <div style="overflow-x:auto">
+        <div class="mat" style="grid-template-columns:64px repeat(6,54px);gap:3px">
+          <div class="mat-cell" style="background:transparent;border-color:transparent;color:var(--muted);min-width:64px;font-size:9px;line-height:1.15;white-space:normal">변수 ↓<br>시간 →</div>
+          ${times.map(t=>`<div class="mat-cell" style="background:var(--bg2);color:var(--muted);font-size:10px">${t}</div>`).join('')}
+          ${VARS.map((v,i)=>`
+            <div class="mat-cell" style="color:${v.color};border-color:${v.color}60;background:${v.color}12;min-width:64px">${v.name}<span style="font-size:9px;color:var(--muted)"> ${v.unit}</span></div>
+            ${v.raw.map(val=>`<div class="mat-cell" style="border-color:${v.color}40;color:${v.color}">${val}</div>`).join('')}
+          `).join('')}
+        </div>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:16px;flex-wrap:wrap">
+          ${VARS.map((v,i)=>`
+            <div style="padding:10px 14px;border-radius:8px;border:1.5px solid ${v.color}50;background:${v.color}0d">
+              <div style="font-size:12px;font-weight:700;color:${v.color}">${v.name} (${v.unit})</div>
+              <div style="font-family:monospace;font-size:11px;color:var(--muted);margin-top:4px">[${v.raw.join(', ')}]</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">
+                평균 ${fmt(mean(v.raw),1)} · 표준편차 ${fmt(std(v.raw),1)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>iTransformer의 시선</strong>: 각 <em>행(row)</em>이 하나의 토큰입니다.
+        기온의 6-스텝 시계열 [18,19,21,24,25,23]이 하나의 "기온 토큰"이 됩니다.
+        기존 Transformer는 각 <em>열(column)</em>을 토큰으로 사용했습니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 2: Normalize & Tokenize ──
+{
+  label:'정규화\n토큰화',
+  archBlock:'input',
+  shapes:[['X_norm','(3 × 6)'],['μ, σ','변수별'],['토큰 수','N = 3']],
+  render(){
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 2</span>변수별 정규화 + 토큰화</div>
+      <div class="stage-formula">x̂ᵢ = (xᵢ − μᵢ) / σᵢ,  token_i = x̂ᵢ ∈ ℝᵀ</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+          각 변수의 시계열을 평균 0, 표준편차 1로 정규화합니다.
+          정규화된 각 행이 하나의 변수 토큰이 됩니다. (총 <strong>N=3개 토큰</strong>)
+        </p>
+        ${VARS.map((v,i)=>{
+          const m=fmt(mean(v.raw),2), s=fmt(std(v.raw),2);
+          const norm=X_NORM[i].map(x=>fmt(x,2));
+          return `
+          <div style="margin-bottom:14px;padding:12px 16px;border-radius:10px;border:1.5px solid ${v.color}40;background:${v.color}08">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span class="token-label" style="color:${v.color}">토큰 ${i+1}<br><small style="font-size:9px">${v.name}</small></span>
+              <span style="font-size:11px;color:var(--muted)">μ = ${m}, σ = ${s}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--muted)">원본:</span>
+              ${v.raw.map(val=>`<div class="token-val" style="border-color:${v.color}30;color:${v.color}88">${val}</div>`).join('')}
+              <span style="color:var(--muted)">→</span>
+              <span style="font-size:11px;color:var(--muted)">정규화:</span>
+              ${norm.map(val=>`<div class="token-val" style="border-color:${v.color}60;color:${v.color};font-weight:600">${val}</div>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="stage-insight">
+        <strong>3개의 토큰</strong>, 각각 길이 T=6의 벡터.
+        기존 Transformer는 T=6개 토큰(각 길이 N=3)이었지만, iTransformer는 N=3개 토큰(각 길이 T=6)입니다.
+        변수 수(N=3)가 타임스텝(T=6)보다 적으므로 attention 연산량이 크게 줄어듭니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 3: Embedding ──
+{
+  label:'Linear\nEmbedding',
+  archBlock:'embed',
+  shapes:[['X_norm','(3 × 6)'],['W_Eᵀ','(6 × 10)'],['H','(3 × 10)']],
+  render(){
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 3</span>Linear Embedding: ℝᵀ → ℝᵈ</div>
+      <div class="stage-formula">H = X_norm · W_Eᵀ, &nbsp; hᵢ[j] = Σ_t xᵢ[t] · W_E[j,t]</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+          각 변수 토큰은 길이 6의 lookback 벡터입니다. Linear Embedding은 이 6개 과거값을
+          서로 다른 가중치 조합 10개로 요약해서 d_model=10 차원 표현으로 바꿉니다.
+          즉, 기온의 과거 6개 값이 기온 토큰의 10개 특징값으로 압축됩니다.
+        </p>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+          <div>
+            <div class="mat-title">X_norm (3 × 6) — 변수별 lookback 토큰</div>
+            <div class="mat" style="grid-template-columns:repeat(6,52px)">
+              ${X_NORM.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}40;font-size:10.5px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">행: 3 변수 토큰, 열: T=6 타임스텝</div>
+          </div>
+          <div style="align-self:center;font-size:24px;color:var(--muted)">×</div>
+          <div>
+            <div class="mat-title">W_Eᵀ (6 × 10) — 학습 가능한 임베딩 가중치</div>
+            <div class="mat" style="grid-template-columns:repeat(${D_MODEL},38px)">
+              ${Array.from({length:T},(_,t)=>Array.from({length:D_MODEL},(_,d)=>W_E[d][t]))
+                .map(row=>row.map(v=>`<div class="mat-cell" style="color:var(--violet);border-color:var(--violet)30;font-size:10px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">6개 과거값을 10개 임베딩 특징으로 바꾸는 가중치</div>
+          </div>
+          <div style="align-self:center;font-size:24px;color:var(--muted)">=</div>
+          <div>
+            <div class="mat-title">H (3 × 10) — 임베딩 결과</div>
+            <div class="mat" style="grid-template-columns:repeat(${D_MODEL},42px)">
+              ${H.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}60;font-weight:600">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">행: 3 변수 토큰, 열: d=10 임베딩 차원</div>
+          </div>
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>핵심</strong>: Linear Embedding은 시간 순서를 없애는 단계가 아니라,
+        한 변수의 lookback 전체를 d_model개의 특징으로 다시 표현하는 단계입니다.
+        이 예시에서는 각 변수의 6개 과거값이 10개 숫자로 바뀌고, 이후 attention은 이 3개 변수 토큰끼리 비교합니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 4: Q, K, V Projection ──
+{
+  label:'QKV\n투영',
+  archBlock:'mha',
+  shapes:[['Heads','5'],['각 head Q,K,V','(3 × 2)'],['Concat','(3 × 10)']],
+  render(){
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 4</span>Multi-Head Q, K, V 계산</div>
+      <div class="stage-formula">head 수 = 5, d_head = 2 → 각 head의 Q,K,V는 (3 × 2)</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+          임베딩 결과 H (3×10)을 5개 head로 나눠 봅니다. 각 head는 Q, K, V를 모두 3×2로 만들고,
+          head 5개의 출력을 이어 붙이면 다시 3×10 표현이 됩니다. 아래는 Head 1의 Q/K/V 예시입니다.
+        </p>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+          <div>
+            <div class="mat-title" style="color:var(--yellow)">Head 1 Q (3 × 2) — Query</div>
+            <div class="mat" style="grid-template-columns:repeat(2,64px)">
+              ${Q_mat.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}50;font-size:12px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">"나는 무엇을 찾나?"</div>
+          </div>
+          <div>
+            <div class="mat-title" style="color:var(--green)">Head 1 K (3 × 2) — Key</div>
+            <div class="mat" style="grid-template-columns:repeat(2,64px)">
+              ${K_mat.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}50;font-size:12px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">"나는 무엇을 가졌나?"</div>
+          </div>
+          <div>
+            <div class="mat-title" style="color:var(--violet)">Head 1 V (3 × 2) — Value</div>
+            <div class="mat" style="grid-template-columns:repeat(${D_HEAD},64px)">
+              ${V_mat.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}50;font-size:11px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">"내 실제 내용"</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding:10px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--muted)">가중치 행렬 크기</div>
+          <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
+            <span style="font-family:monospace;font-size:12px;color:var(--yellow)">각 W_Q: (10 × 2)</span>
+            <span style="font-family:monospace;font-size:12px;color:var(--green)">각 W_K: (10 × 2)</span>
+            <span style="font-family:monospace;font-size:12px;color:var(--violet)">각 W_V: (10 × 2)</span>
+            <span style="font-family:monospace;font-size:12px;color:var(--teal)">5 heads concat → (3 × 10)</span>
+          </div>
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>변수 간 비교 준비</strong>: Q는 현재 변수 토큰이 찾는 패턴,
+        K는 각 변수 토큰이 제공하는 비교 기준으로 볼 수 있습니다.
+        각 head마다 Q@K^T를 계산하면 3×3 변수 간 similarity score 행렬이 나옵니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 6: Attention ──
+{
+  label:'Attention\nScore',
+  archBlock:'mha',
+  shapes:[['Head별 score','5 × (3 × 3)'],['Head 1 표시','(3 × 3)'],['Concat 출력','(3 × 10)']],
+  render(){
+    const names=VARS.map(v=>v.name);
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 5</span>Multi-variate Self-Attention</div>
+      <div class="stage-formula">A_head = softmax(Q_head · K_headᵀ / √d_head),  d_head = 2</div>
+      <div class="stage-body">
+        <div class="attn-wrap">
+          <div>
+            <div class="mat-title" style="color:var(--muted)">Head 1 Raw Score = QKᵀ / √2</div>
+            ${scoremap3x3(QKT,names,names)}
+            <div class="mat-label">Softmax 적용 전</div>
+          </div>
+          <div style="align-self:center;font-size:32px;color:var(--teal)">→</div>
+          <div>
+            <div class="mat-title" style="color:var(--teal)">Head 1 Attention Weight A</div>
+            ${heatmap3x3(A_soft,names,names)}
+            <div class="mat-label">행 합계 = 1.0 (확률 분포)</div>
+          </div>
+          <div style="max-width:240px">
+            <div class="mat-title">해석</div>
+            ${A_soft.map((row,i)=>{
+              const maxJ=row.indexOf(Math.max(...row));
+              return `
+              <div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:var(--bg3);border:1px solid ${colorForVar(i)}30">
+                <div style="font-size:12px;font-weight:700;color:${colorForVar(i)}">${nameForVar(i)}</div>
+                ${row.map((v,j)=>`
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    <span style="font-size:10px;color:${colorForVar(j)};min-width:28px">${nameForVar(j)}</span>
+                    <div style="flex:1;height:6px;border-radius:3px;background:var(--bg2)">
+                      <div style="width:${(v*100).toFixed(0)}%;height:100%;border-radius:3px;background:${colorForVar(j)}"></div>
+                    </div>
+                    <span style="font-size:10px;font-family:monospace;color:${j===maxJ?colorForVar(j):'var(--muted)'};font-weight:${j===maxJ?700:400}">${fmt(v,2)}</span>
+                  </div>
+                `).join('')}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>Head별 변수 관계</strong>:
+        이 표는 Head 1에서 각 변수 토큰이 다른 변수 토큰의 Value 정보를 어떤 가중치로 섞는지 보여줍니다.
+        예를 들어 기온 행의 CO₂ 값(${fmt(A_soft[0][2],2)})이 크면, 기온 토큰의 다음 표현을 만들 때 CO₂ 토큰의 Value 정보가 비교적 크게 반영된다는 뜻입니다.
+        대각선 값이 항상 가장 클 필요는 없으며, attention weight는 상관계수라기보다 Q와 K의 유사도에서 계산된 가중치입니다.
+        실제 multi-head에서는 이런 3×3 attention map이 head마다 하나씩 생기고, 각 head의 3×2 출력을 이어 붙여 3×10 표현을 만듭니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 7: Attention Output + Residual ──
+{
+  label:'Attn 출력\n+잔차',
+  archBlock:'add1',
+  shapes:[['Attn_out','(3 × 10)'],['Z = LN(H+out)','(3 × 10)'],['residual','H + out']],
+  render(){
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 6</span>Attention 출력 + Add &amp; LayerNorm</div>
+      <div class="stage-formula">head_out = A_head · V_head,  Attn_out = Concat(head_1...head_5) ∈ ℝ^{3×10}</div>
+      <div class="stage-body">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+          <div>
+            <div class="mat-title" style="color:var(--violet)">Head 1: A (3×3) × V (3×2)</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div class="mat" style="grid-template-columns:repeat(3,46px)">
+                ${A_soft.map((row,i)=>row.map(v=>`<div class="mat-cell" style="font-size:10px;color:${colorForVar(i)};padding:0 2px">${fmt(v,2)}</div>`).join('')).join('')}
+              </div>
+              <span style="color:var(--muted)">×</span>
+              <div class="mat" style="grid-template-columns:repeat(${D_HEAD},46px)">
+                ${V_mat.map((row,i)=>row.map(v=>`<div class="mat-cell" style="font-size:10px;color:${colorForVar(i)};padding:0 2px">${fmt(v,2)}</div>`).join('')).join('')}
+              </div>
+            </div>
+          </div>
+          <div style="align-self:center;font-size:20px;color:var(--muted)">=</div>
+          <div>
+            <div class="mat-title" style="color:var(--violet)">Concat Attention Output (3 × 10)</div>
+            <div class="mat" style="grid-template-columns:repeat(${D_MODEL},38px)">
+              ${attn_out.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}50;font-size:11px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:18px;padding:12px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border)">
+          <div class="mat-title" style="color:var(--teal)">Head별 출력 concat — head1(3×2) | ... | head5(3×2) → 3×10</div>
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+            ${HEADS.map((head,h)=>`
+              <div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-align:center">head${h+1}(3×2)</div>
+                <div class="mat" style="grid-template-columns:repeat(2,34px)">
+                  ${head.out.map((row,i)=>row.map(v=>`<div class="mat-cell" style="min-width:34px;height:28px;font-size:9.5px;color:${colorForVar(i)};border-color:${colorForVar(i)}40">${fmt(v,2)}</div>`).join('')).join('')}
+                </div>
+              </div>
+            `).join('<div style="align-self:center;color:var(--muted);font-weight:700">|</div>')}
+          </div>
+          <div class="mat-label">각 head는 변수 3개에 대해 2차원 출력을 만들고, 5개 head를 feature 축으로 이어 붙이면 2×5 = 10차원입니다.</div>
+        </div>
+        <div style="margin-top:20px">
+          <div class="mat-title">잔차 연결: Z = LayerNorm(H + Attn_out)</div>
+          <div class="res-box">
+            <div>
+              <div class="mat-title" style="font-size:10px">H</div>
+              <div class="mat" style="grid-template-columns:repeat(${D_MODEL},34px)">
+                ${H.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)}70;font-size:10px">${fmt(v,2)}</div>`).join('')).join('')}
+              </div>
+            </div>
+            <span class="res-plus">+</span>
+            <div>
+              <div class="mat-title" style="font-size:10px">Attn_out</div>
+              <div class="mat" style="grid-template-columns:repeat(${D_MODEL},34px)">
+                ${attn_out.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)}70;font-size:10px">${fmt(v,2)}</div>`).join('')).join('')}
+              </div>
+            </div>
+            <span class="res-plus">→ LN →</span>
+            <div>
+              <div class="mat-title" style="font-size:10px;color:var(--teal)">Z (3 × 10)</div>
+              <div class="mat" style="grid-template-columns:repeat(${D_MODEL},34px)">
+                ${H_attn.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}60;font-weight:600;font-size:10.5px">${fmt(v,2)}</div>`).join('')).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:18px;padding:12px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border)">
+          <div class="mat-title" style="color:var(--teal)">LN 예시: 기온 row</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">
+            먼저 <span style="font-family:monospace;color:var(--ink)">u = H_기온 + Attn_out_기온</span>을 계산합니다.
+            그다음 이 10개 feature 안에서 평균과 표준편차를 구해 정규화합니다.
+            <span style="font-family:monospace;color:var(--teal)">μ=${fmt(LN_EXAMPLE_MEAN,2)}, σ=${fmt(LN_EXAMPLE_STD,2)}</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:10px">
+            <div>
+              <div class="mat-title" style="font-size:10px">u = H + Attn_out</div>
+              <div class="mat" style="grid-template-columns:repeat(${D_MODEL},34px)">
+                ${LN_EXAMPLE_U.map(v=>`<div class="mat-cell" style="min-width:34px;height:28px;font-size:9.5px;color:var(--blue);border-color:var(--blue)40">${fmt(v,2)}</div>`).join('')}
+              </div>
+            </div>
+            <span class="res-plus" style="align-self:center">→</span>
+            <div>
+              <div class="mat-title" style="font-size:10px">LN(u) = (u - μ) / σ</div>
+              <div class="mat" style="grid-template-columns:repeat(${D_MODEL},34px)">
+                ${H_attn[LN_EXAMPLE_ROW].map(v=>`<div class="mat-cell" style="min-width:34px;height:28px;font-size:9.5px;color:var(--teal);border-color:var(--teal)50">${fmt(v,2)}</div>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="mat-label">논문/모델의 LayerNorm에는 보통 학습 가능한 scale/bias가 붙지만, 여기서는 계산 흐름을 보이기 위해 정규화 핵심만 표시했습니다.</div>
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>Add &amp; LayerNorm</strong>: 원래 임베딩 표현 H에 attention 출력을 더한 뒤 LayerNorm을 적용합니다.
+        이로써 attention 단계에서 계산된 변수 토큰 간 참조 정보가 각 변수 토큰의 표현에 반영됩니다.
+        예를 들어 기온 토큰이 CO₂ 토큰을 많이 참고했다면, 그 영향이 다음 표현 Z에 섞입니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 8: FFN ──
+{
+  label:'Feed\nForward',
+  archBlock:'ffn',
+  shapes:[['W1','(8 × 10)'],['W2','(10 × 8)'],['H_next','(3 × 10)']],
+  render(){
+    const h1s=H_attn.map(h=>W1.map(w=>gelu(h.reduce((s,x,k)=>s+x*w[k],0))));
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 7</span>Feed Forward Network (변수별 독립 적용)</div>
+      <div class="stage-formula">z ∈ ℝ¹⁰, &nbsp; h = GELU(W₁z) ∈ ℝ⁸, &nbsp; FFN(z) = W₂h ∈ ℝ¹⁰</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+          FFN은 각 변수 토큰에 <em>독립적으로</em> 적용됩니다.
+          이 단계에서 각 변수의 <strong style="color:var(--teal)">시간적 패턴</strong>이 학습됩니다.
+          (d=10 → d_ff=8 → d=10)
+        </p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:20px">
+          <div class="ffn-layer">
+            ${Array.from({length:D_MODEL},(_,j)=>`<div class="ffn-node" style="width:24px;height:24px;border-color:var(--teal);color:var(--teal)">z${j+1}</div>`).join('')}
+            <div class="ffn-title">입력<br>d=10</div>
+          </div>
+          <div class="ffn-arrow" style="display:flex;flex-direction:column;gap:2px;align-items:center">
+            ${Array(6).fill('<div style="width:1px;height:10px;background:var(--border)"></div>').join('')}
+            <span style="font-size:10px;color:var(--muted)">W₁ (8×10)</span>
+          </div>
+          <div class="ffn-layer">
+            ${Array(8).fill(0).map((_, j) => `<div class="ffn-node active" style="width:30px;height:30px">g${j+1}</div>`).join('')}
+            <div class="ffn-title">GELU<br>d_ff=8</div>
+          </div>
+          <div class="ffn-arrow" style="display:flex;flex-direction:column;gap:2px;align-items:center">
+            ${Array(6).fill('<div style="width:1px;height:10px;background:var(--border)"></div>').join('')}
+            <span style="font-size:10px;color:var(--muted)">W₂ (10×8)</span>
+          </div>
+          <div class="ffn-layer">
+            ${Array.from({length:D_MODEL},(_,j)=>`<div class="ffn-node" style="width:24px;height:24px;border-color:var(--violet);color:var(--violet)">o${j+1}</div>`).join('')}
+            <div class="ffn-title">출력<br>d=10</div>
+          </div>
+          <div style="margin-left:8px">
+            <div class="mat-title" style="color:var(--muted)">H_after_FFN (= H_next 전)</div>
+            <div class="mat" style="grid-template-columns:repeat(${D_MODEL},38px)">
+              ${FFN_out.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}50;font-size:11px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+          </div>
+        </div>
+        <div style="padding:12px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);font-size:12.5px;color:var(--muted)">
+          <strong style="color:var(--ink)">기온 토큰 FFN 예시:</strong><br>
+          z = [${fmtArr(H_attn[0]).join(', ')}]<br>
+          h1 = GELU(W₁·z) = [${h1s[0].map(v=>fmt(v,2)).join(', ')}]<br>
+          FFN(z) = W₂·h1 = [${fmtArr(FFN_out[0]).join(', ')}]
+        </div>
+      </div>
+      <div class="stage-insight">
+        <strong>FFN의 역할</strong>: Attention이 변수 토큰 사이의 참조 관계를 만든다면,
+        FFN은 "각 변수 토큰 안에서 시간적 표현을 어떻게 변환할지"를 학습합니다.
+        같은 FFN 가중치가 각 변수 토큰에 독립적으로 적용되며, 입력 토큰이 다르기 때문에 변수별 출력 표현도 달라집니다.
+      </div>
+    </div>`;
+  }
+},
+
+// ── STEP 9: Output Projection ──
+{
+  label:'출력\nProjection',
+  archBlock:'proj',
+  shapes:[['H_next','(3 × 10)'],['W_proj^T','(10 × 4)'],['Forecast','(3 × 4일)']],
+  render(){
+    return `
+    <div class="step-panel">
+      <div class="stage-title"><span class="badge">Step 8</span>Output Projection — 미래 예측 생성</div>
+      <div class="stage-formula">Forecast = H_next · W_proj^T, &nbsp; (3×10) · (10×4) = (3×4)</div>
+      <div class="stage-body">
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px">
+          이 데모의 task는 과거 6일을 보고 미래 4일(t₇~t₁₀)을 예측하는 것입니다.
+          2차 잔차 연결 후 각 변수 토큰의 10차원 표현을 projection 행렬과 곱해 변수별 미래 4개 값을 생성합니다.
+        </p>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+          <div>
+            <div class="mat-title">H_next (3 × 10) — 최종 표현</div>
+            <div class="mat" style="grid-template-columns:repeat(${D_MODEL},38px)">
+              ${H_next.map((row,i)=>row.map(v=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}60;font-weight:600;font-size:11px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+          </div>
+          <div style="align-self:center;font-size:20px;color:var(--muted)">×</div>
+          <div>
+            <div class="mat-title" style="color:var(--violet)">W_proj^T (10 × 4) — projection 가중치</div>
+            <div class="mat" style="grid-template-columns:repeat(${H_FUTURE},38px)">
+              ${W_PROJ_T.map(row=>row.map(v=>`<div class="mat-cell" style="color:var(--violet);border-color:var(--violet)30;font-size:9.5px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">각 변수 토큰의 10개 특징을 미래 4일 값으로 투영</div>
+          </div>
+          <div style="align-self:center;font-size:20px;color:var(--muted)">=</div>
+          <div>
+            <div class="mat-title" style="color:var(--teal)">Forecast (3 × 4) — 정규화된 미래 4일</div>
+            <div class="mat" style="grid-template-columns:repeat(4,60px)">
+              ${FORECAST.map((row,i)=>row.map((v,j)=>`<div class="mat-cell" style="color:${colorForVar(i)};border-color:${colorForVar(i)}70;background:${colorForVar(i)}14;font-weight:700;font-size:11px">${fmt(v,2)}</div>`).join('')).join('')}
+            </div>
+            <div class="mat-label">예측 t₇, t₈, t₉, t₁₀ (정규화 공간)</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
+          ${VARS.map((v,i)=>`
+            <div style="padding:10px 14px;border-radius:10px;border:1.5px solid ${v.color}50;background:${v.color}08;flex:1;min-width:160px">
+              <div style="font-size:12px;font-weight:700;color:${v.color}">${v.name} 예측</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">과거 6일 입력: [${v.raw.join(',')}]</div>
+              <div style="font-size:11px;color:${v.color};margin-top:4px;font-family:monospace">
+                → [${FORECAST[i].map(f=>fmt(f,2)).join(', ')}] (정규화)</div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="margin-top:18px;padding:12px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border)">
+          <div class="mat-title" style="color:var(--teal)">역정규화 예측 — 실제 단위로 보면</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+            위 Forecast는 정규화 공간의 값입니다. 각 변수의 과거 6일 평균 μ와 표준편차 σ를 다시 적용해
+            <span style="font-family:monospace;color:var(--ink)">실제값 = 예측값 × σ + μ</span>로 되돌립니다.
+            CO₂는 원본이 ×10 단위라 ppm으로는 다시 10을 곱해 표시했습니다.
+            값 자체는 학습된 실제 모델의 예측이 아니라, 이 페이지의 데모 가중치로 계산한 예시입니다.
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            ${VARS.map((v,i)=>`
+              <div style="padding:10px 12px;border-radius:8px;border:1.5px solid ${v.color}50;background:${v.color}08;min-width:210px;flex:1">
+                <div style="font-size:12px;font-weight:700;color:${v.color}">${v.name}: 미래 4일 예측</div>
+                <div style="font-size:10.5px;color:var(--muted);margin-top:4px">과거 6일: [${v.raw.join(', ')}] ${v.unit}</div>
+                <div style="font-size:11px;color:${v.color};margin-top:6px;font-family:monospace">
+                  t₇~t₁₀ ≈ [${DENORM_FORECAST[i].map(val=>actualForecastValue(i,val)).join(', ')}]
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+      </div>
+      <div class="stage-insight">
+        <strong>전체 요약</strong>: 과거 6일 Input(3×6) → Embedding → Attention(변수 간 참조/상관 패턴) →
+        Add&Norm → FFN(변수별 패턴) → Add&Norm → Projection 행렬곱 → 미래 4일 Forecast(3×4).
+        <br><br>
+        <strong style="color:var(--teal)">iTransformer의 핵심 혁신</strong>: 토큰 축을 뒤집어(invert),
+        Attention은 N×N=3×3=9개 score로 변수 간 참조 패턴을 만들고 (기존 T×T=36개),
+        FFN은 각 변수의 temporal 표현을 독립적으로 학습합니다.
+      </div>
+    </div>`;
+  }
+},
+];
+
+// ════════════════════════════════════════════
+//  RENDER ENGINE
+// ════════════════════════════════════════════
+let currentStep=0;
+let playTimer=null;
+
+const ARCH_MAP={
+  input:[0,1,2],embed:[3],mha:[4,5],add1:[6],ffn:[7],add2:[8],proj:[8]
+};
+
+function goToBlockStep(blockId){
+  const matches=ARCH_MAP[blockId];
+  if(matches) goTo(matches[0]);
+}
+
+function render(){
+  const step=STEPS[currentStep];
+
+  // Stage content
+  document.getElementById('stage-content').innerHTML=step.render();
+
+  // Step bar
+  const sb=document.getElementById('stepbar');
+  sb.innerHTML=STEPS.map((s,i)=>`
+    <div class="stepbar-item ${i===currentStep?'active':i<currentStep?'done':''}" onclick="goTo(${i})">
+      <div class="stepnum">${i===0?'▶':i}</div>
+      <div class="steplabel">${s.label.replace(/\n/,'<br>')}</div>
+    </div>
+  `).join('');
+
+  // Arch sidebar
+  document.getElementById('arch-flow').innerHTML=arch(step.archBlock);
+
+  // Shapes sidebar
+  document.getElementById('sidebar-shapes').innerHTML=shapePanel(step.shapes||[]);
+
+  // Counter
+  document.getElementById('step-counter').textContent=`${currentStep+1} / ${STEPS.length}`;
+
+  // Buttons
+  document.getElementById('btn-prev').disabled=currentStep===0;
+  document.getElementById('btn-next').disabled=currentStep===STEPS.length-1;
+}
+
+function goTo(i){
+  currentStep=Math.max(0,Math.min(STEPS.length-1,i));
+  render();
+}
+
+document.getElementById('btn-prev').addEventListener('click',()=>goTo(currentStep-1));
+document.getElementById('btn-next').addEventListener('click',()=>goTo(currentStep+1));
+document.getElementById('btn-play').addEventListener('click',()=>{
+  if(playTimer){clearInterval(playTimer);playTimer=null;document.getElementById('btn-play').textContent='▶ 자동재생';return;}
+  document.getElementById('btn-play').textContent='⏸ 정지';
+  playTimer=setInterval(()=>{
+    if(currentStep>=STEPS.length-1){clearInterval(playTimer);playTimer=null;document.getElementById('btn-play').textContent='▶ 자동재생';return;}
+    goTo(currentStep+1);
+  },3000);
+});
+
+// keyboard nav
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') goTo(currentStep+1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') goTo(currentStep-1);
+});
+
+render();
+</script>
+</body>
+</html>
