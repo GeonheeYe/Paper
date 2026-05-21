@@ -46,6 +46,18 @@
       padding: 6px 0 24px;
     }
 
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      text-decoration: none;
+    }
+
+    .back-link:hover { color: var(--blue); }
+
     h1 {
       margin: 0 0 8px;
       font-size: clamp(28px, 3.4vw, 48px);
@@ -1587,6 +1599,7 @@
   <main style="--active-tone: var(--teal)">
     <header>
       <div>
+        <a class="back-link" href="index.html">← 개요 페이지로</a>
         <h1>iTransformer: 시간축을 뒤집어 보는 Transformer</h1>
       </div>
     </header>

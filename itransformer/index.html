@@ -76,12 +76,41 @@
       border-radius: 12px;
       margin: 30px 0;
     }
+    .links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 34px 0;
+    }
+    .link-card {
+      display: block;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: inherit;
+      text-decoration: none;
+      background: color-mix(in srgb, var(--accent) 5%, var(--card));
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .link-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .link-card strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .link-card span {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
     .hashtags {
       color: var(--accent);
       font-weight: 650;
       word-break: keep-all;
       margin-top: 34px;
     }
+    footer a { color: var(--accent); }
     footer {
       margin-top: 40px;
       padding-top: 20px;
@@ -127,6 +156,21 @@
 
     <p>이 접근은 복잡한 모듈을 추가하는 대신, <strong>“무엇을 token으로 볼 것인가”</strong> 라는 기본 가정을 다시 본다는 점에서 의미가 큽니다.</p>
 
+    <div class="links" aria-label="관련 미리보기 링크">
+      <a class="link-card" href="figure2.html">
+        <strong>Figure 2 설명 보기 →</strong>
+        <span>시간 token 관점과 변수 token 관점을 비교합니다.</span>
+      </a>
+      <a class="link-card" href="figure4.html">
+        <strong>Figure 4 설명 보기 →</strong>
+        <span>iTransformer의 forward pass 흐름을 단계별로 시각화합니다.</span>
+      </a>
+      <a class="link-card" href="https://arxiv.org/abs/2310.06625" target="_blank" rel="noopener noreferrer">
+        <strong>논문 원문 보기 →</strong>
+        <span>arXiv: iTransformer 논문 페이지로 이동합니다.</span>
+      </a>
+    </div>
+
     <p>iTransformer는 ICLR 2024 Spotlight로 선정되었고, 이후 NeuralForecast, GluonTS 같은 시계열 라이브러리에도 포함되었습니다.</p>
 
     <p>또한 2025~2026년 후속 연구들에서도 baseline이나 개선 대상으로 계속 등장하고 있습니다.</p>
@@ -142,7 +186,7 @@
     <p class="hashtags">#TimeSeries #Transformer #DeepLearning #MachineLearning #Forecasting #iTransformer #AnomalyDetection #TelecomAI #AI</p>
 
     <footer>
-      정리 주제: iTransformer: Inverted Transformers Are Effective for Time Series Forecasting
+      정리 주제: <a href="https://arxiv.org/abs/2310.06625" target="_blank" rel="noopener noreferrer">iTransformer: Inverted Transformers Are Effective for Time Series Forecasting</a>
     </footer>
   </main>
 </body>
